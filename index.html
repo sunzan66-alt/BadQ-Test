@@ -913,7 +913,7 @@
   // explicit user tap — never as a side effect of just opening the app.
   (function(){
     try{
-      var CURRENT_VERSION = "1.14.9";
+      var CURRENT_VERSION = "1.15.0";
       var qs = new URLSearchParams(location.search);
       if (qs.get("_v")) return; // already just reloaded once via a manual update tap, avoid loops
       fetch(location.pathname, { cache: "no-store" })
@@ -944,8 +944,8 @@
      firebase-sync.js sets window.BadQCloud = {available:false} and does nothing else — zero network calls,
      zero console errors, app boots and works 100% offline exactly as before. Placed here (outside the
      compiled <script> block below) so they survive every re-run of compile_splice.js untouched. -->
-<script src="firebase-config.js"></script>
-<script type="module" src="firebase-sync.js"></script>
+<!-- v1.15.0 (Phase 5A): legacy firebase-config.js / firebase-sync.js (window.BadQCloud) are no longer loaded. The ONE Owner identity is the Commercial
+     Firebase account (commercial-sync.js). The legacy files stay in the repository, dormant and untouched. -->
 <script src="sync-contract.js"></script>
 <script src="commercial-config.js"></script>
 <script type="module" src="commercial-sync.js"></script>
@@ -3036,7 +3036,7 @@ const th = defineMessages("th", [
   ["online.beta", "เบต้า"],
   ["online.notAvailable", "ฟีเจอร์นี้ยังไม่พร้อมใช้งาน"],
   ["online.intro", "เชื่อมต่อ BadQ Online เพื่อเปิดใช้งานระบบออนไลน์และ Member Portal"],
-  ["online.betaNotice", "ฟีเจอร์ออนไลน์กำลังอยู่ระหว่างพัฒนา (Beta) — การใช้งานออฟไลน์ปกติไม่ได้รับผลกระทบ"],
+  ["online.betaNotice", "ฟีเจอร์ออนไลน์ใช้ได้เมื่อเข้าสู่ระบบและลงทะเบียนอุปกรณ์นี้ — การใช้งานออฟไลน์ปกติไม่ได้รับผลกระทบ"],
   ["online.firebaseUnavailable", "ไม่สามารถเชื่อมต่อ Firebase ได้ในขณะนี้ (อาจเป็นเพราะไม่มีอินเทอร์เน็ต หรือ SDK โหลดไม่สำเร็จ) — แอปยังใช้งานได้ตามปกติแบบออฟไลน์ทุกประการ"],
   ["online.auth.signIn", "เข้าสู่ระบบ"],
   ["online.auth.createOwner", "สร้างบัญชี Owner"],
@@ -3051,12 +3051,65 @@ const th = defineMessages("th", [
   ["online.auth.verificationNotFound", "ยังไม่พบการยืนยันอีเมล กรุณายืนยันก่อนแล้วลองใหม่"],
   ["online.auth.emailRequired", "กรุณากรอกอีเมลก่อน"],
   ["online.auth.resetSent", "ส่งอีเมลรีเซ็ตรหัสผ่านแล้ว กรุณาตรวจสอบกล่องจดหมาย"],
-  ["online.auth.verifyPrompt", "กรุณายืนยันอีเมลก่อนใช้งาน BadQ Online ({email})"],
+  ["online.auth.verifyPrompt", "กรุณายืนยันอีเมลก่อนใช้งานบัญชี BadQ ({email})"],
   ["online.auth.resendVerification", "ส่งอีเมลยืนยันอีกครั้ง"],
   ["online.auth.checking", "กำลังตรวจสอบ…"],
   ["online.auth.checkAgain", "ตรวจสอบอีกครั้ง"],
   ["online.auth.signOut", "ออกจากระบบ"],
   ["online.auth.verified", "ยืนยันอีเมลแล้ว"],
+  ["online.introOwner", "เข้าสู่ระบบด้วยบัญชี BadQ (อีเมลและรหัสผ่านเดียวกับเว็บไซต์ BadQ) เพื่อเปิดใช้งานฟีเจอร์ออนไลน์"],
+  ["online.accountTitle", "☁️ บัญชี BadQ"],
+  ["online.accountUnavailable", "บริการบัญชีออนไลน์ยังไม่พร้อมใช้งานในเวอร์ชันนี้ — แอปยังใช้งานออฟไลน์ได้ตามปกติทุกประการ"],
+  ["online.status.needsDevice", "ต้องลงทะเบียนอุปกรณ์"],
+  ["online.status.deviceLimit", "ครบจำนวนอุปกรณ์แล้ว"],
+  ["online.status.deviceRevoked", "อุปกรณ์นี้ถูกยกเลิกสิทธิ์"],
+  ["online.status.deviceUnauthorized", "อุปกรณ์นี้ยังไม่ได้รับอนุญาต"],
+  ["online.status.mismatch", "คนละบัญชีกับที่เชื่อมไว้"],
+  ["online.device.defaultName", "อุปกรณ์ของฉัน"],
+  ["online.device.registerTitle", "ลงทะเบียนอุปกรณ์นี้"],
+  ["online.device.registerBody", "อุปกรณ์นี้จะถูกลงทะเบียนกับบัญชี Owner ของคุณ BadQ Full ใช้ได้สูงสุด {max} อุปกรณ์"],
+  ["online.device.registerAction", "ลงทะเบียนอุปกรณ์นี้"],
+  ["online.device.registerRetry", "ลองลงทะเบียนอีกครั้ง"],
+  ["online.device.registering", "กำลังลงทะเบียน…"],
+  ["online.device.nameLabel", "ชื่ออุปกรณ์"],
+  ["online.device.authorizedThis", "อุปกรณ์นี้ลงทะเบียนแล้ว ใช้ฟีเจอร์ออนไลน์ได้"],
+  ["online.device.limitTitle", "ลงทะเบียนอุปกรณ์ครบ {max} เครื่องแล้ว"],
+  ["online.device.limitBody", "บัญชีนี้มีอุปกรณ์ครบจำนวนที่กำหนดแล้ว หากต้องการใช้เครื่องนี้ ให้เลือกยกเลิกสิทธิ์ของอุปกรณ์อื่นเอง — ระบบจะไม่ยกเลิกหรือแทนที่ให้อัตโนมัติ"],
+  ["online.device.manage", "จัดการอุปกรณ์"],
+  ["online.device.manageHint", "บัญชีนี้ใช้ได้สูงสุด {max} อุปกรณ์ การยกเลิกสิทธิ์ไม่ลบข้อมูลในอุปกรณ์นั้น"],
+  ["online.device.revokedTitle", "อุปกรณ์นี้ถูกยกเลิกสิทธิ์แล้ว"],
+  ["online.device.revokedBody", "ข้อมูลในเครื่องยังอยู่ครบและใช้งานออฟไลน์ได้ตามปกติ แต่ฟีเจอร์ออนไลน์ถูกปิดสำหรับเครื่องนี้ หากต้องการใช้ต่อ ให้ขอสิทธิ์อีกครั้ง"],
+  ["online.device.reauthorize", "ขอสิทธิ์เครื่องนี้อีกครั้ง"],
+  ["online.device.reauthorizeConfirm", "ยืนยันเปิดสิทธิ์อุปกรณ์นี้อีกครั้งหรือไม่? ต้องมีที่ว่าง (สูงสุด {max} อุปกรณ์)"],
+  ["online.device.reauthorizeOther", "เปิดสิทธิ์อีกครั้ง"],
+  ["online.device.unauthorizedTitle", "อุปกรณ์นี้ยังไม่ผ่านการตรวจสอบสิทธิ์"],
+  ["online.device.unauthorizedBody", "เซิร์ฟเวอร์ไม่ยืนยันสิทธิ์ของเครื่องนี้ ฟีเจอร์ออนไลน์จึงปิดอยู่ (ข้อมูลในเครื่องไม่ได้รับผลกระทบ) ตรวจสอบรายการอุปกรณ์ได้ที่ \"จัดการอุปกรณ์\""],
+  ["online.device.migrationTitle", "ต้องย้ายระบบอุปกรณ์ของบัญชีนี้ก่อน"],
+  ["online.device.migrationBody", "บัญชีนี้มีอุปกรณ์ที่ลงทะเบียนด้วยระบบรุ่นก่อน ยังไม่สามารถลงทะเบียนเครื่องนี้ในเวอร์ชันนี้ได้ (ข้อมูลในเครื่องไม่ได้รับผลกระทบ)"],
+  ["online.device.offlineNote", "ออฟไลน์หรือเชื่อมต่อเซิร์ฟเวอร์ไม่ได้ในขณะนี้ — ฟีเจอร์ออนไลน์ยังไม่พร้อมใช้งาน แต่ข้อมูลและการใช้งานในเครื่องเป็นปกติ"],
+  ["online.device.reauthBody", "เพื่อความปลอดภัย กรุณากรอกรหัสผ่านอีกครั้งเพื่อยืนยันการดำเนินการนี้"],
+  ["online.device.thisDevice", "เครื่องนี้"],
+  ["online.device.statusAuthorized", "ใช้งานได้"],
+  ["online.device.statusRevoked", "ถูกยกเลิก"],
+  ["online.device.lastSeen", "ใช้ล่าสุด {when}"],
+  ["online.device.revoke", "ยกเลิกสิทธิ์"],
+  ["online.device.revokeConfirm", "ยกเลิกสิทธิ์อุปกรณ์ \"{name}\" หรือไม่? ข้อมูลในอุปกรณ์นั้นจะไม่ถูกลบ แต่จะใช้ฟีเจอร์ออนไลน์ไม่ได้"],
+  ["online.device.revokeThisConfirm", "ยกเลิกสิทธิ์เครื่องนี้ (\"{name}\") หรือไม่? ข้อมูลในเครื่องจะไม่ถูกลบและยังใช้งานออฟไลน์ได้ แต่ฟีเจอร์ออนไลน์จะปิดทันที"],
+  ["online.device.listLoading", "กำลังโหลดรายการอุปกรณ์…"],
+  ["online.device.listError", "โหลดรายการอุปกรณ์ไม่สำเร็จ"],
+  ["online.device.listEmpty", "ยังไม่มีอุปกรณ์ที่ลงทะเบียน"],
+  ["online.device.platformWeb", "เว็บ/PWA"],
+  ["online.error.deviceLimit", "บัญชีนี้ลงทะเบียนอุปกรณ์ครบจำนวนแล้ว — เลือกยกเลิกสิทธิ์อุปกรณ์อื่นก่อน"],
+  ["online.error.deviceRevoked", "อุปกรณ์นี้ถูกยกเลิกสิทธิ์แล้ว"],
+  ["online.error.deviceAuth", "เซิร์ฟเวอร์ไม่ยืนยันสิทธิ์ของอุปกรณ์นี้"],
+  ["online.error.deviceEnrollmentRequired", "ต้องลงทะเบียนอุปกรณ์นี้ก่อน"],
+  ["online.error.deviceMigration", "บัญชีนี้ต้องย้ายระบบอุปกรณ์ก่อน — ยังลงทะเบียนเครื่องนี้ไม่ได้ในเวอร์ชันนี้"],
+  ["online.error.deviceCredential", "เก็บรหัสอุปกรณ์ในเครื่องนี้ไม่ได้ (เบราว์เซอร์อาจบล็อกที่เก็บข้อมูล) ฟีเจอร์ออนไลน์จึงปิดอยู่"],
+  ["online.error.recentAuth", "ต้องกรอกรหัสผ่านอีกครั้งเพื่อยืนยันตัวตนก่อนทำรายการนี้"],
+  ["online.error.deviceNotFound", "ไม่พบอุปกรณ์นี้ในรายการ"],
+  ["online.error.accountMismatch", "บัญชีนี้ไม่ตรงกับบัญชีที่เชื่อมก๊วนไว้ในเครื่องนี้ จึงไม่เปิดฟีเจอร์ออนไลน์ (ข้อมูลในเครื่องไม่ได้รับผลกระทบ)"],
+  ["online.error.environmentMismatch", "การตั้งค่าสภาพแวดล้อมออนไลน์ไม่ถูกต้อง ฟีเจอร์ออนไลน์จึงปิดอยู่"],
+  ["online.error.contractInvalid", "ข้อมูลที่ได้จากเซิร์ฟเวอร์ไม่ถูกต้อง ฟีเจอร์ออนไลน์จึงปิดอยู่"],
   ["online.cloud.connectionError", "เกิดข้อผิดพลาดในการเชื่อมต่อ Cloud — {error}"],
   ["online.cloud.offlineReconnect", "ออฟไลน์อยู่ — จะเชื่อมต่อสถานะอุปกรณ์อีกครั้งเมื่อกลับมามีอินเทอร์เน็ต"],
   ["online.cloud.connectingWorkspace", "กำลังเชื่อมต่อ Workspace…"],
@@ -3160,8 +3213,8 @@ const th = defineMessages("th", [
   ["online.error.tooManyRequests", "ลองหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่"],
   ["online.error.network", "ไม่มีการเชื่อมต่ออินเทอร์เน็ต"],
   ["online.error.deviceConflict", "มีอุปกรณ์อื่นกำลังใช้งานอยู่"],
-  ["online.error.staleDevice", "อุปกรณ์นี้ไม่มีสิทธิ์ใช้งาน BadQ Online แล้ว (สิทธิ์ถูกย้ายไปยังอุปกรณ์อื่น)"],
-  ["online.error.emailNotVerified", "กรุณายืนยันอีเมลก่อนใช้งาน BadQ Online"],
+  ["online.error.staleDevice", "อุปกรณ์นี้ไม่มีสิทธิ์ใช้งานฟีเจอร์ออนไลน์แล้ว (สิทธิ์ถูกย้ายไปยังอุปกรณ์อื่น)"],
+  ["online.error.emailNotVerified", "กรุณายืนยันอีเมลก่อนใช้งานบัญชี BadQ"],
   ["online.error.workspaceNotFound", "ไม่พบ Workspace กรุณาลองเข้าสู่ระบบใหม่อีกครั้ง"],
   ["online.error.notWorkspaceOwner", "บัญชีนี้ไม่มีสิทธิ์เข้าถึง Workspace นี้"],
   ["online.error.cloudInitConfirmationRequired", "ต้องยืนยันก่อนสร้างข้อมูลก๊วนแรกบน Cloud"],
@@ -4877,7 +4930,7 @@ const en = defineMessages("en", [
   ["online.beta", "Beta"],
   ["online.notAvailable", "This feature is not available yet"],
   ["online.intro", "Connect to BadQ Online to enable online features and Member Portal"],
-  ["online.betaNotice", "Online features are currently in Beta — normal offline use is unaffected"],
+  ["online.betaNotice", "Online features turn on once you sign in and register this device — normal offline use is unaffected"],
   ["online.firebaseUnavailable", "Firebase is unavailable right now (you may be offline or the SDK may not have loaded) — the app remains fully available offline"],
   ["online.auth.signIn", "Sign in"],
   ["online.auth.createOwner", "Create Owner account"],
@@ -4892,12 +4945,65 @@ const en = defineMessages("en", [
   ["online.auth.verificationNotFound", "Email verification has not been detected yet. Verify your email, then try again"],
   ["online.auth.emailRequired", "Enter your email first"],
   ["online.auth.resetSent", "Password-reset email sent. Check your inbox"],
-  ["online.auth.verifyPrompt", "Verify your email before using BadQ Online ({email})"],
+  ["online.auth.verifyPrompt", "Verify your email before using your BadQ account ({email})"],
   ["online.auth.resendVerification", "Resend verification email"],
   ["online.auth.checking", "Checking…"],
   ["online.auth.checkAgain", "Check again"],
   ["online.auth.signOut", "Sign out"],
   ["online.auth.verified", "Email verified"],
+  ["online.introOwner", "Sign in with your BadQ account (the same email and password as the BadQ website) to turn on online features"],
+  ["online.accountTitle", "☁️ BadQ Account"],
+  ["online.accountUnavailable", "The online account service is not available in this build — the app keeps working offline as usual"],
+  ["online.status.needsDevice", "Device registration needed"],
+  ["online.status.deviceLimit", "Device limit reached"],
+  ["online.status.deviceRevoked", "This device was removed"],
+  ["online.status.deviceUnauthorized", "This device is not authorized"],
+  ["online.status.mismatch", "Different account than linked"],
+  ["online.device.defaultName", "My device"],
+  ["online.device.registerTitle", "Register this device"],
+  ["online.device.registerBody", "This device will be registered to your Owner account. BadQ Full allows up to {max} devices."],
+  ["online.device.registerAction", "Register this device"],
+  ["online.device.registerRetry", "Try registering again"],
+  ["online.device.registering", "Registering…"],
+  ["online.device.nameLabel", "Device name"],
+  ["online.device.authorizedThis", "This device is registered and can use online features"],
+  ["online.device.limitTitle", "All {max} devices are registered"],
+  ["online.device.limitBody", "This account already has the maximum number of devices. To use this one, choose another device to remove yourself — BadQ never removes or replaces a device automatically."],
+  ["online.device.manage", "Manage devices"],
+  ["online.device.manageHint", "This account can use up to {max} devices. Removing a device does not delete the data on it."],
+  ["online.device.revokedTitle", "This device was removed from the account"],
+  ["online.device.revokedBody", "Your data on this device is intact and works offline as usual, but online features are turned off here. Ask for access again to use them."],
+  ["online.device.reauthorize", "Ask for access again"],
+  ["online.device.reauthorizeConfirm", "Re-enable this device? A free slot is required (up to {max} devices)."],
+  ["online.device.reauthorizeOther", "Re-enable"],
+  ["online.device.unauthorizedTitle", "This device could not be verified"],
+  ["online.device.unauthorizedBody", "The server did not confirm this device, so online features are off (your data on this device is unaffected). Check the device list under \"Manage devices\"."],
+  ["online.device.migrationTitle", "This account's device system needs to be migrated first"],
+  ["online.device.migrationBody", "This account has devices registered with the previous system, so this device cannot be registered in this version (your data on this device is unaffected)."],
+  ["online.device.offlineNote", "Offline or the server cannot be reached right now — online features are unavailable, but your data and local use are normal."],
+  ["online.device.reauthBody", "For security, enter your password again to confirm this action."],
+  ["online.device.thisDevice", "This device"],
+  ["online.device.statusAuthorized", "Active"],
+  ["online.device.statusRevoked", "Removed"],
+  ["online.device.lastSeen", "Last used {when}"],
+  ["online.device.revoke", "Remove access"],
+  ["online.device.revokeConfirm", "Remove access for \"{name}\"? Data on that device is not deleted, but it can no longer use online features."],
+  ["online.device.revokeThisConfirm", "Remove access for this device (\"{name}\")? Your data here is not deleted and still works offline, but online features turn off immediately."],
+  ["online.device.listLoading", "Loading devices…"],
+  ["online.device.listError", "Could not load the device list"],
+  ["online.device.listEmpty", "No devices registered yet"],
+  ["online.device.platformWeb", "Web/PWA"],
+  ["online.error.deviceLimit", "This account already has the maximum number of devices — remove another device first"],
+  ["online.error.deviceRevoked", "This device was removed from the account"],
+  ["online.error.deviceAuth", "The server did not confirm this device"],
+  ["online.error.deviceEnrollmentRequired", "Register this device first"],
+  ["online.error.deviceMigration", "This account's device system must be migrated first — this device cannot be registered in this version"],
+  ["online.error.deviceCredential", "Could not keep the device key on this device (the browser may be blocking storage), so online features are off"],
+  ["online.error.recentAuth", "Enter your password again to confirm your identity before doing this"],
+  ["online.error.deviceNotFound", "That device is not in the list"],
+  ["online.error.accountMismatch", "This account differs from the one the groups on this device were linked to, so online features stay off (your data on this device is unaffected)"],
+  ["online.error.environmentMismatch", "The online environment setting is invalid, so online features are off"],
+  ["online.error.contractInvalid", "The server returned unexpected data, so online features are off"],
   ["online.cloud.connectionError", "Cloud connection error — {error}"],
   ["online.cloud.offlineReconnect", "Offline — device status will reconnect when internet access returns"],
   ["online.cloud.connectingWorkspace", "Connecting to Workspace…"],
@@ -5001,8 +5107,8 @@ const en = defineMessages("en", [
   ["online.error.tooManyRequests", "Too many attempts. Wait a moment, then try again"],
   ["online.error.network", "No internet connection"],
   ["online.error.deviceConflict", "Another device is active"],
-  ["online.error.staleDevice", "This device no longer has BadQ Online access (access was moved to another device)"],
-  ["online.error.emailNotVerified", "Verify your email before using BadQ Online"],
+  ["online.error.staleDevice", "This device no longer has online access (access was moved to another device)"],
+  ["online.error.emailNotVerified", "Verify your email before using your BadQ account"],
   ["online.error.workspaceNotFound", "Workspace not found. Sign in again and retry"],
   ["online.error.notWorkspaceOwner", "This account cannot access this Workspace"],
   ["online.error.cloudInitConfirmationRequired", "Confirm before creating the first group in Cloud"],
@@ -5325,7 +5431,7 @@ function createI18n(locale = DEFAULT_LOCALE, { timeZone = DEFAULT_TIME_ZONE } = 
   });
 })();
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-const APP_VERSION = "1.14.9";
+const APP_VERSION = "1.15.0";
 const LEVELS = ["R", "BG1", "BG2", "BG3", "S-", "S", "N-", "N", "P-", "P", "C"];
 const WEIGHT = {
   R: 1,
@@ -32266,24 +32372,40 @@ function RankTierEditSheet({
 // Centralized Online status model (spec section K) — one small derivation function instead of scattered
 // booleans, reused by both the compact NavRow and the full sheet below, and available to any future P2
 // screen that needs to reason about cloud connection state.
+// v1.15.0 (Phase 5A) — ONE visible Owner identity: the Commercial Firebase account (BadQCommercialBridge). The legacy
+// BadQCloud Owner login / Workspace / Single-Active-Device layer is no longer part of the user-facing path (see the
+// BadQOnlineSheet header). Cloud capability needs: verified Commercial Owner + server-authorized THIS device (max 2).
 const ONLINE_STATUS = {
   NOT_CONNECTED: "not_connected",
-  // never signed in on this device, or workspace not yet resolved
+  // signed out, or the Commercial service is not configured in this build
+  CHECKING: "checking",
+  // signed in + verified, device/identity validation not finished yet
   OFFLINE: "offline",
-  // signed in before, but this device currently has no network
+  // network unavailable — never interpreted as a revoked identity/device
   UNVERIFIED: "unverified",
-  // signed in, email not verified yet — not an authorized Online Owner
+  // signed in, email not verified yet
   ACTIVE: "active",
-  // signed in, verified, Workspace resolved, THIS device is the active one
-  REVOKED: "revoked",
-  // signed in, verified, but a DIFFERENT device is now the active one
-  ERROR: "error" // an unexpected Auth/Firestore error occurred
+  // verified Owner + this device authorized (server-confirmed)
+  NEEDS_DEVICE: "needs_device",
+  // verified Owner, this installation not registered yet (explicit Owner action)
+  DEVICE_LIMIT: "device_limit",
+  // 2 devices already authorized
+  DEVICE_REVOKED: "device_revoked",
+  DEVICE_UNAUTHORIZED: "device_unauthorized",
+  MISMATCH: "mismatch",
+  // a different Owner than the one this device's cloud links belong to
+  ERROR: "error"
 };
 const ONLINE_STATUS_META = {
   [ONLINE_STATUS.NOT_CONNECTED]: {
     icon: "☁️",
     label: "ยังไม่ได้เชื่อมต่อ",
     color: T.muted
+  },
+  [ONLINE_STATUS.CHECKING]: {
+    icon: "🟠",
+    label: "กำลังตรวจสอบ…",
+    color: "#b45309"
   },
   [ONLINE_STATUS.OFFLINE]: {
     icon: "🟠",
@@ -32300,9 +32422,29 @@ const ONLINE_STATUS_META = {
     label: "ออนไลน์",
     color: T.green
   },
-  [ONLINE_STATUS.REVOKED]: {
+  [ONLINE_STATUS.NEEDS_DEVICE]: {
+    icon: "🟠",
+    label: "ต้องลงทะเบียนอุปกรณ์",
+    color: "#b45309"
+  },
+  [ONLINE_STATUS.DEVICE_LIMIT]: {
+    icon: "🟠",
+    label: "ครบจำนวนอุปกรณ์แล้ว",
+    color: "#b45309"
+  },
+  [ONLINE_STATUS.DEVICE_REVOKED]: {
     icon: "🔒",
-    label: "ย้ายไปอุปกรณ์อื่นแล้ว",
+    label: "อุปกรณ์นี้ถูกยกเลิกสิทธิ์",
+    color: T.accent
+  },
+  [ONLINE_STATUS.DEVICE_UNAUTHORIZED]: {
+    icon: "🔒",
+    label: "อุปกรณ์นี้ยังไม่ได้รับอนุญาต",
+    color: T.accent
+  },
+  [ONLINE_STATUS.MISMATCH]: {
+    icon: "🔒",
+    label: "คนละบัญชีกับที่เชื่อมไว้",
     color: T.accent
   },
   [ONLINE_STATUS.ERROR]: {
@@ -32311,24 +32453,52 @@ const ONLINE_STATUS_META = {
     color: T.accent
   }
 };
-// Pure function — the ONE place that decides which of the 6 statuses above applies. No component keeps its
-// own ad-hoc isConnected/isVerified/etc. booleans; every display funnels through this.
+// Pure function — the ONE place that decides which status applies (both the Settings row and the sheet use it).
 function deriveOnlineStatus({
   available,
-  authUser,
-  isOffline,
-  workspace,
-  deviceId,
-  cloudError
+  user,
+  device,
+  isOffline
 }) {
-  if (!available || !authUser) return ONLINE_STATUS.NOT_CONNECTED;
-  if (!authUser.emailVerified) return ONLINE_STATUS.UNVERIFIED;
-  if (cloudError) return ONLINE_STATUS.ERROR;
-  if (isOffline) return ONLINE_STATUS.OFFLINE;
-  if (!workspace) return ONLINE_STATUS.NOT_CONNECTED; // resolving, or not created yet
-  if (workspace.activeDeviceId && deviceId && workspace.activeDeviceId !== deviceId) return ONLINE_STATUS.REVOKED;
-  return ONLINE_STATUS.ACTIVE;
+  if (!available || !user) return ONLINE_STATUS.NOT_CONNECTED;
+  if (!user.emailVerified) return ONLINE_STATUS.UNVERIFIED;
+  switch (device && device.status) {
+    case "authorized":
+      return ONLINE_STATUS.ACTIVE;
+    case "needs_enrollment":
+    case "enrolling":
+    case "reauth_required":
+      return ONLINE_STATUS.NEEDS_DEVICE;
+    case "limit_reached":
+      return ONLINE_STATUS.DEVICE_LIMIT;
+    case "revoked":
+      return ONLINE_STATUS.DEVICE_REVOKED;
+    case "unauthorized":
+    case "migration_required":
+      return ONLINE_STATUS.DEVICE_UNAUTHORIZED;
+    case "account_mismatch":
+      return ONLINE_STATUS.MISMATCH;
+    case "offline":
+      return ONLINE_STATUS.OFFLINE;
+    case "unavailable":
+      return isOffline ? ONLINE_STATUS.OFFLINE : ONLINE_STATUS.ERROR;
+    default:
+      return isOffline ? ONLINE_STATUS.OFFLINE : ONLINE_STATUS.CHECKING;
+  }
 }
+const ONLINE_STATUS_LABEL_KEY = {
+  [ONLINE_STATUS.NOT_CONNECTED]: "online.status.notConnected",
+  [ONLINE_STATUS.CHECKING]: "online.auth.checking",
+  [ONLINE_STATUS.OFFLINE]: "online.status.offline",
+  [ONLINE_STATUS.UNVERIFIED]: "online.status.unverified",
+  [ONLINE_STATUS.ACTIVE]: "online.status.online",
+  [ONLINE_STATUS.NEEDS_DEVICE]: "online.status.needsDevice",
+  [ONLINE_STATUS.DEVICE_LIMIT]: "online.status.deviceLimit",
+  [ONLINE_STATUS.DEVICE_REVOKED]: "online.status.deviceRevoked",
+  [ONLINE_STATUS.DEVICE_UNAUTHORIZED]: "online.status.deviceUnauthorized",
+  [ONLINE_STATUS.MISMATCH]: "online.status.mismatch",
+  [ONLINE_STATUS.ERROR]: "online.status.error"
+};
 // Firebase/Auth/Cloud error codes -> localized display copy. The error code remains the sole input to this
 // presentation helper; Auth, Workspace, device-authority and Cloud state-machine behavior stay untouched.
 // Unknown errors deliberately use a localized generic message rather than leaking SDK copy into the UI.
@@ -32366,7 +32536,31 @@ function cloudErrorMessage(e, tr) {
     CLUB_NOT_FOUND: "online.error.groupNotFound",
     TOO_MANY_OPEN_SESSIONS: "online.error.tooManyOpenSessions",
     unauthenticated: "online.error.unauthenticated",
-    "functions/unavailable": "online.error.serverUnavailable"
+    "functions/unavailable": "online.error.serverUnavailable",
+    // v1.15.0 (Phase 5A) — Commercial identity / device contract codes (IdentityBridgeError.code / API error.code).
+    DEVICE_LIMIT_REACHED: "online.error.deviceLimit",
+    "device-revoked": "online.error.deviceRevoked",
+    "device-authorization-required": "online.error.deviceAuth",
+    "device-not-authorized": "online.error.deviceAuth",
+    "device-credential-invalid": "online.error.deviceAuth",
+    "device-already-revoked": "online.error.deviceRevoked",
+    "device-enrollment-required": "online.error.deviceEnrollmentRequired",
+    "device-policy-migration-required": "online.error.deviceMigration",
+    "device-policy-upgrade-required": "online.error.deviceMigration",
+    "device-credential-unavailable": "online.error.deviceCredential",
+    "recent-authentication-required": "online.error.recentAuth",
+    "reauthorization-confirmation-required": "online.error.generic",
+    "device-not-found": "online.error.deviceNotFound",
+    "device-not-revoked": "online.error.generic",
+    "email-not-verified": "online.error.emailNotVerified",
+    "email-verification-required": "online.error.emailNotVerified",
+    "account-mismatch": "online.error.accountMismatch",
+    "environment-mismatch": "online.error.environmentMismatch",
+    "contract-invalid": "online.error.contractInvalid",
+    "device-contract-invalid": "online.error.contractInvalid",
+    offline: "online.error.network",
+    "verification-unavailable": "online.error.serverUnavailable",
+    "session-unavailable": "online.error.unauthenticated"
   };
   if (tr && code && MAP[code]) return tr(MAP[code]);
   return tr ? tr("online.error.generic") : e && e.message || "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
@@ -32391,27 +32585,8 @@ function firestoreTsToDate(ts) {
 // inside BadQOnlineSheet's own deeper Auth/Workspace UI) or any Unified Login business logic — this is a
 // pure presentation-layer addition, reusing the pre-existing (previously unwired) online.status.* catalog
 // keys, byte-identical to ONLINE_STATUS_META's own Thai labels above.
-const ONLINE_STATUS_LABEL_KEY = {
-  [ONLINE_STATUS.NOT_CONNECTED]: "online.status.notConnected",
-  [ONLINE_STATUS.OFFLINE]: "online.status.offline",
-  [ONLINE_STATUS.UNVERIFIED]: "online.status.unverified",
-  [ONLINE_STATUS.ACTIVE]: "online.status.online",
-  [ONLINE_STATUS.REVOKED]: "online.status.moved",
-  [ONLINE_STATUS.ERROR]: "online.status.error"
-};
-// Both Firebase clients initialize asynchronously. Core Cloud remains the v1.14.2 default app; the
-// Commercial bridge is a separate named app and can never supply identity to Core Workspace calls.
-function useBadQCloudAdapter() {
-  const readAdapter = () => typeof window !== "undefined" ? window.BadQCloud : null;
-  const [adapter, setAdapter] = useState(readAdapter);
-  useEffect(() => {
-    const refresh = () => setAdapter(readAdapter());
-    window.addEventListener("badq:cloud-ready", refresh);
-    refresh();
-    return () => window.removeEventListener("badq:cloud-ready", refresh);
-  }, []);
-  return adapter;
-}
+// The Commercial bridge initializes asynchronously (separate named Firebase app). The legacy BadQCloud adapter is no
+// longer read by any user-facing component.
 function useBadQCommercialAdapter() {
   const readAdapter = () => typeof window !== "undefined" ? window.BadQCommercialBridge : null;
   const [adapter, setAdapter] = useState(readAdapter);
@@ -32423,28 +32598,42 @@ function useBadQCommercialAdapter() {
   }, []);
   return adapter;
 }
-function BadQOnlineNavRow({
-  deviceId,
-  onOpen,
-  tr
-}) {
-  const cloud = useBadQCloudAdapter();
-  const available = !!(cloud && cloud.available);
-  const [authUser, setAuthUser] = useState(() => available && cloud.getCurrentOwner ? cloud.getCurrentOwner() : null);
-  const [workspace, setWorkspace] = useState(null);
+// Plain snapshot of the Commercial Firebase user (never the mutable SDK object, never a token).
+function snapshotOwner(user) {
+  return user && typeof user.uid === "string" ? {
+    uid: user.uid,
+    email: typeof user.email === "string" ? user.email : "",
+    emailVerified: user.emailVerified === true
+  } : null;
+}
+// ONE subscription to the canonical Owner: Commercial auth user + server-confirmed device authorization state.
+function useCommercialOwner(commercial) {
+  const available = !!(commercial && commercial.available);
+  const [user, setUser] = useState(() => available && commercial.getCurrentOwner ? snapshotOwner(commercial.getCurrentOwner()) : null);
+  const [device, setDevice] = useState(() => available && commercial.getDeviceState ? commercial.getDeviceState() : {
+    status: "signed_out"
+  });
   const [isOffline, setIsOffline] = useState(typeof navigator !== "undefined" ? !navigator.onLine : false);
   useEffect(() => {
-    if (!available || !cloud.onAuthChange) return;
-    const unsub = cloud.onAuthChange(u => {
-      setAuthUser(u || null);
-      setWorkspace(null);
-    });
+    if (!available || !commercial.onAuthChange) return;
+    const unsub = commercial.onAuthChange(u => setUser(snapshotOwner(u)));
     return () => {
       try {
         unsub && unsub();
       } catch (e) {}
     };
-  }, [available]);
+  }, [available, commercial]);
+  useEffect(() => {
+    if (!available || !commercial.onDeviceStateChange) return;
+    const unsub = commercial.onDeviceStateChange(value => setDevice(value || {
+      status: "signed_out"
+    }));
+    return () => {
+      try {
+        unsub && unsub();
+      } catch (e) {}
+    };
+  }, [available, commercial]);
   useEffect(() => {
     const goOnline = () => setIsOffline(false),
       goOffline = () => setIsOffline(true);
@@ -32455,37 +32644,51 @@ function BadQOnlineNavRow({
       window.removeEventListener("offline", goOffline);
     };
   }, []);
-  useEffect(() => {
-    if (!available || !authUser || !authUser.emailVerified || !cloud.getOrCreateWorkspace || !cloud.subscribeWorkspace) return;
-    let cancelled = false,
-      unsub = null;
-    (async () => {
-      try {
-        const workspaceId = await cloud.getOrCreateWorkspace(authUser.uid);
-        if (cancelled) return;
-        unsub = cloud.subscribeWorkspace(workspaceId, ws => {
-          if (!cancelled) setWorkspace(ws);
-        });
-      } catch (e) {}
-    })();
-    return () => {
-      cancelled = true;
-      try {
-        unsub && unsub();
-      } catch (e) {}
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [available, authUser && authUser.uid, authUser && authUser.emailVerified]);
+  const refreshUser = () => {
+    if (available && commercial.getCurrentOwner) setUser(snapshotOwner(commercial.getCurrentOwner()));
+  };
+  return {
+    available,
+    user,
+    device,
+    isOffline,
+    refreshUser
+  };
+}
+// Friendly device name for the registration confirmation (no identifiers, no secrets).
+function describeThisDevice(t) {
+  try {
+    const ua = typeof navigator !== "undefined" && navigator.userAgent || "";
+    const os = /iPad/.test(ua) ? "iPad" : /iPhone/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "";
+    const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "";
+    const pwa = typeof window !== "undefined" && (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true);
+    const label = [os, browser, pwa ? "PWA" : ""].filter(Boolean).join(" · ");
+    return (label || t("online.device.defaultName")).slice(0, 80);
+  } catch (e) {
+    return t("online.device.defaultName");
+  }
+}
+function BadQOnlineNavRow({
+  onOpen,
+  tr
+}) {
+  const commercial = useBadQCommercialAdapter();
+  const {
+    available,
+    user,
+    device,
+    isOffline
+  } = useCommercialOwner(commercial);
   const status = deriveOnlineStatus({
     available,
-    authUser,
-    isOffline,
-    workspace,
-    deviceId,
-    cloudError: null
+    user,
+    device,
+    isOffline
   });
   const meta = ONLINE_STATUS_META[status];
   return /*#__PURE__*/React.createElement("button", {
+    "data-testid": "online-nav-row",
+    "data-status": status,
     onClick: onOpen,
     style: {
       width: "100%",
@@ -32887,12 +33090,14 @@ function PlayerSyncPanel({
     }
   }, error));
 }
-// Full "☁️ BadQ Online" sheet (spec sections B-L). Owner Auth (register/verify/sign-in/reset/logout) +
-// Workspace resolution (create-once, idempotent) + Single Active Device (auto-register when none exists,
-// explicit-confirm takeover when one already exists, live revoked-state detection via a real-time Firestore
-// listener). Does not read or write ANY BadQ business data — see the file-level comment block above.
+// Full "☁️ BadQ Online" sheet. v1.15.0 (Phase 5A): ONE Owner account = the Commercial Firebase account (same email /
+// password / UID / verification / password-reset lifecycle as the website). Sign-up / sign-in / verification / reset /
+// sign-out all go through window.BadQCommercialBridge. Cloud capability is enabled only after the server confirms THIS
+// device is one of the Owner's (max 2) authorized devices — registration needs an explicit Owner confirmation, and the
+// device key never touches bg-v11, Backup, Restore, diagnostics or the UI (see commercial-sync.js). The legacy
+// BadQCloud Workspace / Single-Active-Device / initial-cloud-upload UI is no longer reachable from here (legacy code
+// stays dormant on disk, untouched). Local Core data is never read, written, or erased by anything below.
 function BadQOnlineSheet({
-  deviceId,
   groupDefaults,
   sessionHistory,
   localGroups,
@@ -32903,12 +33108,14 @@ function BadQOnlineSheet({
   fmtDateTime,
   onClose
 }) {
-  const cloud = useBadQCloudAdapter();
   const commercial = useBadQCommercialAdapter();
-  const available = !!(cloud && cloud.available);
-  const commercialAvailable = !!(commercial && commercial.available);
-  const [authUser, setAuthUser] = useState(() => available && cloud.getCurrentOwner ? cloud.getCurrentOwner() : null);
-  const [commercialUser, setCommercialUser] = useState(() => commercialAvailable && commercial.getCurrentOwner ? commercial.getCurrentOwner() : null);
+  const {
+    available: commercialAvailable,
+    user,
+    device,
+    isOffline,
+    refreshUser
+  } = useCommercialOwner(commercial);
   const [authMode, setAuthMode] = useState("signin"); // "signin" | "register"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32916,10 +33123,13 @@ function BadQOnlineSheet({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [notice, setNotice] = useState("");
-  const [workspace, setWorkspace] = useState(null); // live workspace doc ({id, primaryOwnerUid, activeDeviceId, ...}), or null while resolving/absent
-  const [cloudError, setCloudError] = useState(null);
-  const [isOffline, setIsOffline] = useState(typeof navigator !== "undefined" ? !navigator.onLine : false);
-  const [takeoverDismissed, setTakeoverDismissed] = useState(false); // collapses the big confirm dialog into a small reopenable banner
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [deviceLabel, setDeviceLabel] = useState("");
+  const [reauthPassword, setReauthPassword] = useState("");
+  const [deviceErr, setDeviceErr] = useState("");
+  const [revokedConfirm, setRevokedConfirm] = useState(false);
+  const deviceAuthorized = !!(user && user.emailVerified && device && device.status === "authorized");
   const phase2GroupLinking = !!(commercialAvailable && commercial.listBadmintonGroups && commercial.linkBadmintonGroup && commercial.createAndLinkBadmintonGroup && commercial.validateBadmintonGroupLink && commercial.unlinkBadmintonGroup);
   const localGroupOptions = (localGroups && Array.isArray(localGroups.records) ? localGroups.records : []).filter(record => record && typeof record.localGroupId === "string" && typeof record.name === "string");
   const localGroupNames = localGroupOptions.map(record => record.name);
@@ -32933,69 +33143,6 @@ function BadQOnlineSheet({
   const [selectedCloudGroupId, setSelectedCloudGroupId] = useState("");
   const [phase2Busy, setPhase2Busy] = useState(false);
   const [phase2Error, setPhase2Error] = useState("");
-  // Distinguishes the two device-conflict scenarios that deriveOnlineStatus's single REVOKED bucket does NOT
-  // separate (they share one status value on purpose -- see ONLINE_STATUS's own comment -- but need DIFFERENT
-  // banner copy per spec sections H and J): a device that has NEVER been this Workspace's active device
-  // meeting an already-claimed Workspace for the first time (section H -- "takeover offer" copy) vs. a
-  // device that WAS this Workspace's active device and has since been superseded by another device (section
-  // J -- "revoked" copy). Sticky for this mount once observed true; never reset back to false here.
-  const [everActiveHere, setEverActiveHere] = useState(false);
-  useEffect(() => {
-    if (workspace && deviceId && workspace.activeDeviceId === deviceId) setEverActiveHere(true);
-  }, [workspace && workspace.activeDeviceId, deviceId]);
-
-  // v1.12.9 — this device's own cached copy of the one-time "activeSessionId" capability that
-  // claimActiveDevice's Cloud Function hands back ONLY to whichever device just called it (see the file-
-  // header comment above and firebase-sync.js's). Never re-derived from any Firestore read -- Firestore
-  // Rules make workspaces/{id}/private/authority unreadable to every client on purpose, so a revoked device
-  // can never discover the current value; it can only ever know the value it was PERSONALLY handed the last
-  // time IT successfully claimed/took over. Persisted under its own storage key, isolated from deviceId and
-  // from all BadQ business data, exactly like deviceId itself (survives reload, not included in backups).
-  const [activeSessionId, setActiveSessionIdState] = useState(null);
-  useEffect(() => {
-    if (!deviceId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await window.storage.get("bg-v11-active-session-" + deviceId);
-        const raw = r && r.value != null ? r.value : null;
-        if (!cancelled) setActiveSessionIdState(raw || null);
-      } catch (e) {}
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [deviceId]);
-  const persistSessionId = async sid => {
-    setActiveSessionIdState(sid || null);
-    if (!deviceId) return;
-    try {
-      if (sid) await window.storage.set("bg-v11-active-session-" + deviceId, sid);
-    } catch (e) {}
-  };
-  useEffect(() => {
-    if (!available || !cloud.onAuthChange) return;
-    const unsub = cloud.onAuthChange(u => {
-      setAuthUser(u || null);
-      setWorkspace(null);
-      setCloudError(null);
-      setTakeoverDismissed(false);
-    });
-    return () => {
-      try {
-        unsub && unsub();
-      } catch (e) {}
-    };
-  }, [available]);
-  useEffect(() => {
-    if (!commercialAvailable || !commercial.onAuthChange) return;
-    const unsub = commercial.onAuthChange(u => setCommercialUser(u || null));
-    return () => {
-      try {
-        unsub && unsub();
-      } catch (e) {}
-    };
-  }, [commercialAvailable]);
   useEffect(() => {
     if (!phase2GroupLinking || !commercial.onBadmintonGroupLinkChange) return;
     const unsub = commercial.onBadmintonGroupLinkChange(value => setGroupLinkState(value || {
@@ -33019,7 +33166,7 @@ function BadQOnlineSheet({
     }
   }, [phase2GroupLinking, localGroupOptions.map(record => `${record.localGroupId}:${record.name}`).join("|")]);
   useEffect(() => {
-    if (!phase2GroupLinking || !commercialUser || !commercialUser.emailVerified) return;
+    if (!phase2GroupLinking || !deviceAuthorized) return;
     let cancelled = false;
     setPhase2Busy(true);
     setPhase2Error("");
@@ -33036,10 +33183,10 @@ function BadQOnlineSheet({
     return () => {
       cancelled = true;
     };
-  }, [phase2GroupLinking, commercialUser && commercialUser.uid, commercialUser && commercialUser.emailVerified]);
+  }, [phase2GroupLinking, user && user.uid, deviceAuthorized]);
   const selectedGroupLink = (groupLinkState.records || []).find(record => record && record.localGroupId === selectedLocalGroupId) || null;
   useEffect(() => {
-    if (!phase2GroupLinking || !selectedGroupLink || selectedGroupLink.linkStatus !== "linked" || selectedGroupLink.validationStatus === "validated" || !commercialUser || !commercialUser.emailVerified) return;
+    if (!phase2GroupLinking || !selectedGroupLink || selectedGroupLink.linkStatus !== "linked" || selectedGroupLink.validationStatus === "validated" || !deviceAuthorized) return;
     let cancelled = false;
     commercial.validateBadmintonGroupLink(selectedGroupLink.localGroupId).catch(() => {
       if (!cancelled) setPhase2Error(t("online.groupLink.actionError"));
@@ -33047,202 +33194,7 @@ function BadQOnlineSheet({
     return () => {
       cancelled = true;
     };
-  }, [phase2GroupLinking, selectedGroupLink && selectedGroupLink.localGroupId, selectedGroupLink && selectedGroupLink.validationStatus, commercialUser && commercialUser.uid]);
-  useEffect(() => {
-    const goOnline = () => setIsOffline(false),
-      goOffline = () => setIsOffline(true);
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
-    return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
-    };
-  }, []);
-
-  // Resolve (create-once, idempotent) Workspace + subscribe to it in real time — ONLY once signed in AND
-  // verified (section D's required order: verify -> resolve workspace -> resolve device -> evaluate
-  // authority -> enable Online). An unverified account never reaches this at all.
-  useEffect(() => {
-    if (!available || !authUser || !authUser.emailVerified || !cloud.getOrCreateWorkspace || !cloud.subscribeWorkspace) return;
-    let cancelled = false,
-      unsub = null;
-    (async () => {
-      try {
-        const workspaceId = await cloud.getOrCreateWorkspace(authUser.uid);
-        if (cancelled) return;
-        unsub = cloud.subscribeWorkspace(workspaceId, ws => {
-          if (!cancelled) {
-            setWorkspace(ws);
-            setCloudError(null);
-          }
-        }, e => {
-          if (!cancelled) setCloudError(e);
-        });
-      } catch (e) {
-        if (!cancelled) setCloudError(e);
-      }
-    })();
-    return () => {
-      cancelled = true;
-      try {
-        unsub && unsub();
-      } catch (e) {}
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [available, authUser && authUser.uid, authUser && authUser.emailVerified]);
-
-  // Auto-claim THIS device as Active the moment a Workspace with NO active device yet is seen (section H:
-  // "the current verified Owner may register the current device as Active"). Only ever fires when
-  // activeDeviceId is genuinely absent — a Workspace that already names a DIFFERENT device never goes
-  // through this path, only through the explicit takeover confirmation below.
-  useEffect(() => {
-    if (!workspace || !deviceId || !cloud || !cloud.claimActiveDevice) return;
-    if (workspace.activeDeviceId) return;
-    // v1.12.11: also present this device's own cached activeSessionId (if any). This effect's own guard
-    // above only ever fires when workspace.activeDeviceId is genuinely absent (Case A server-side, which
-    // needs no proof), so activeSessionId is normally null here anyway -- passed through for forward
-    // consistency with claimActiveDevice's new same-device-reclaim contract, never to change this effect's
-    // own trigger condition or behavior.
-    cloud.claimActiveDevice(workspace.id, deviceId, APP_VERSION, {
-      isTakeover: false,
-      currentActiveSessionId: activeSessionId
-    }).then(res => {
-      if (res && res.activeSessionId) persistSessionId(res.activeSessionId);
-    }).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspace && workspace.id, workspace && workspace.activeDeviceId, deviceId]);
-
-  // v1.12.9 — the ONE concrete "protected Cloud write" in this phase (spec's own acceptance tests require
-  // one to demonstrate real enforcement, not just a client-side status label): once this device believes
-  // it's active AND holds a cached session capability, it asks the trusted pingDeviceHeartbeat Cloud
-  // Function to record a heartbeat. If a takeover happened elsewhere and this device's cached capability is
-  // now stale, the Function rejects it with STALE_SESSION regardless of what this device's own UI currently
-  // shows — that rejection is surfaced via cloudError exactly like any other Cloud error would be.
-  useEffect(() => {
-    if (!cloud || !cloud.pingDeviceHeartbeat || !workspace || !deviceId || !activeSessionId) return;
-    if (workspace.activeDeviceId !== deviceId) return;
-    let cancelled = false;
-    cloud.pingDeviceHeartbeat(deviceId, activeSessionId, APP_VERSION).then(() => {
-      if (!cancelled) setCloudError(null);
-    }).catch(e => {
-      if (!cancelled) setCloudError(e);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [workspace && workspace.id, workspace && workspace.activeDeviceId, deviceId, activeSessionId]);
-  const status = deriveOnlineStatus({
-    available,
-    authUser,
-    isOffline,
-    workspace,
-    deviceId,
-    cloudError
-  });
-  const meta = ONLINE_STATUS_META[status];
-  const hasConflict = !!(workspace && workspace.activeDeviceId && deviceId && workspace.activeDeviceId !== deviceId);
-
-  // v1.12.12 (P2.2 — CRITICAL: Initial Cloud Data Safety) — read-only reconnaissance, ONLY once this device
-  // is genuinely the Active Device (never for a revoked/conflicted device, which has no business offering to
-  // seed anything). Tells this UI whether Cloud already has Club data (in which case NO upload is ever
-  // offered here — see the safe "already has data" state below, spec: "never automatically overwrite it with
-  // local data merely because this device became Active") or is genuinely empty (in which case, and ONLY
-  // then, an explicit Owner-confirmed initial upload becomes possible).
-  const [cloudInitState, setCloudInitState] = useState(null);
-  useEffect(() => {
-    if (!cloud || !cloud.checkCloudInitState || !workspace || !deviceId || workspace.activeDeviceId !== deviceId) {
-      setCloudInitState(null);
-      return;
-    }
-    let cancelled = false;
-    cloud.checkCloudInitState().then(res => {
-      if (!cancelled) setCloudInitState(res);
-    }).catch(() => {
-      if (!cancelled) setCloudInitState(null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [workspace && workspace.id, workspace && workspace.activeDeviceId, deviceId]);
-
-  // v1.12.29 — UX-2 (see project doc badq-v11228-review-p22-followup.md): once Cloud genuinely has a Club,
-  // show its real name(s) instead of a flat "already has data" line with no detail. This is a plain,
-  // read-only Firestore query against workspaces/{id}/clubs (cloud.listClubs, firebase-sync.js) — the SAME
-  // collection, and the SAME pre-existing owner-only Rule, that checkCloudInitState's own Function already
-  // relies on being readable. No Cloud Function or Firestore Rules change was needed or made for this.
-  const [cloudClubs, setCloudClubs] = useState(null); // null = not fetched yet; [] = fetched, empty; array = {name} entries
-  const [cloudClubsLoading, setCloudClubsLoading] = useState(false);
-  const [cloudClubsErr, setCloudClubsErr] = useState("");
-  useEffect(() => {
-    if (!cloud || !cloud.listClubs || !workspace || !cloudInitState || cloudInitState.clubsInitialized !== true) {
-      setCloudClubs(null);
-      setCloudClubsErr("");
-      setCloudClubsLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setCloudClubsLoading(true);
-    setCloudClubsErr("");
-    cloud.listClubs(workspace.id).then(clubs => {
-      if (!cancelled) setCloudClubs(Array.isArray(clubs) ? clubs : []);
-    }).catch(e => {
-      if (!cancelled) {
-        setCloudClubs(null);
-        setCloudClubsErr(e && e.code || "unknown");
-      }
-    }).finally(() => {
-      if (!cancelled) setCloudClubsLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [workspace && workspace.id, cloudInitState && cloudInitState.clubsInitialized]);
-  const [initConfirmOpen, setInitConfirmOpen] = useState(false);
-  const [initBusy, setInitBusy] = useState(false);
-  const [initErr, setInitErr] = useState("");
-  const [initDone, setInitDone] = useState(false);
-  // Summary shown to the Owner BEFORE they confirm (spec: "number of clubs/groups, number of current
-  // sessions, most recent local update timestamp, device/browser context where practical") — built entirely
-  // from data THIS device already has locally; never fetched from anywhere else.
-  const localGroupCount = localGroupNames.length;
-  const localSessionCount = (sessionHistory || []).length;
-  const localMostRecentAt = (sessionHistory || []).reduce((max, h) => Math.max(max, Number(h && h.endedAt) || 0), 0);
-  // v1.12.29 — UX-1 (see project doc badq-v11228-review-p22-followup.md): the Owner can now pick WHICH local
-  // group seeds the Cloud Club, instead of it always silently being whichever group was created earliest on
-  // this device. `defaultGroupName` prefers the group the Owner is CURRENTLY using (`currentGroupName`, i.e.
-  // session.name) when it's one of the saved local groups — the group they most likely mean — else falls back
-  // to the first saved group (the old, only, behavior), else to the pre-existing "ก๊วนของฉัน" placeholder when
-  // there are no saved local groups at all (that last fallback is byte-for-byte unchanged from before this
-  // patch). `selectedGroupName` is null until the Owner explicitly touches the picker; `cloudInitGroupName` is
-  // the ONE value actually used everywhere below — the upload payload, the confirmation dialog, and the
-  // success message all read this same value, so none of them can ever disagree about which name is being
-  // uploaded (same single-source-of-truth discipline the v1.12.28 BUG-1 fix established, now extended to a
-  // value the Owner can also change).
-  const defaultGroupName = currentGroupName && localGroupNames.includes(currentGroupName) ? currentGroupName : localGroupNames[0] || "ก๊วนของฉัน";
-  const [selectedGroupName, setSelectedGroupName] = useState(null);
-  const cloudInitGroupName = selectedGroupName && localGroupNames.includes(selectedGroupName) ? selectedGroupName : defaultGroupName;
-  const otherLocalGroupCount = Math.max(0, localGroupCount - (localGroupNames.includes(cloudInitGroupName) ? 1 : 0));
-  const doConfirmInitialCloudData = async () => {
-    setInitBusy(true);
-    setInitErr("");
-    try {
-      await cloud.upsertClub(deviceId, activeSessionId, {
-        club: {
-          name: cloudInitGroupName
-        },
-        confirmedInitialData: true
-      });
-      setInitConfirmOpen(false);
-      setInitDone(true);
-      setCloudInitState({
-        clubsInitialized: true
-      });
-    } catch (e) {
-      setInitErr(cloudErrorMessage(e, t));
-    } finally {
-      setInitBusy(false);
-    }
-  };
+  }, [phase2GroupLinking, selectedGroupLink && selectedGroupLink.localGroupId, selectedGroupLink && selectedGroupLink.validationStatus, user && user.uid, deviceAuthorized]);
   const refreshPhase2Groups = async () => {
     const groups = await commercial.listBadmintonGroups();
     const safe = Array.isArray(groups) ? groups : [];
@@ -33312,6 +33264,8 @@ function BadQOnlineSheet({
     }
   };
   const groupLinkStatusKey = selectedGroupLink?.validationStatus === "validated" ? "online.groupLink.validated" : selectedGroupLink?.validationStatus === "offline" ? "online.groupLink.offline" : selectedGroupLink?.validationStatus === "deleted" ? "online.groupLink.deleted" : selectedGroupLink?.validationStatus === "account_mismatch" ? "online.groupLink.accountMismatch" : "online.groupLink.stale";
+  const needsRecentAuth = !!(device && device.status === "reauth_required");
+  const deviceError = e => e && e.code ? cloudErrorMessage(e, t) : t("online.error.generic");
   const doRegister = async () => {
     if (password !== confirmPassword) {
       setErr(t("online.auth.passwordMismatch"));
@@ -33325,8 +33279,8 @@ function BadQOnlineSheet({
     setErr("");
     setNotice("");
     try {
-      await cloud.registerOwner(email.trim(), password);
-      if (cloud.sendVerificationEmail) await cloud.sendVerificationEmail().catch(() => {});
+      await commercial.registerOwner(email.trim(), password);
+      if (commercial.sendVerificationEmail) await Promise.resolve(commercial.sendVerificationEmail()).catch(() => {});
       setPassword("");
       setConfirmPassword("");
     } catch (e) {
@@ -33340,7 +33294,7 @@ function BadQOnlineSheet({
     setErr("");
     setNotice("");
     try {
-      await cloud.signInOwner(email.trim(), password);
+      await commercial.signInOwner(email.trim(), password);
       setPassword("");
     } catch (e) {
       setErr(cloudErrorMessage(e, t));
@@ -33353,7 +33307,7 @@ function BadQOnlineSheet({
     setErr("");
     setNotice("");
     try {
-      await cloud.sendVerificationEmail();
+      await commercial.sendVerificationEmail();
       setNotice(t("online.auth.verificationSent"));
     } catch (e) {
       setErr(cloudErrorMessage(e, t));
@@ -33366,8 +33320,8 @@ function BadQOnlineSheet({
     setErr("");
     setNotice("");
     try {
-      const u = await cloud.reloadCurrentUser();
-      setAuthUser(u || null);
+      const u = await commercial.reloadCurrentUser();
+      refreshUser();
       if (!u || !u.emailVerified) setErr(t("online.auth.verificationNotFound"));
     } catch (e) {
       setErr(cloudErrorMessage(e, t));
@@ -33384,7 +33338,7 @@ function BadQOnlineSheet({
     setErr("");
     setNotice("");
     try {
-      await cloud.sendPasswordReset(email.trim());
+      await commercial.sendPasswordReset(email.trim());
       setNotice(t("online.auth.resetSent"));
     } catch (e) {
       setErr(cloudErrorMessage(e, t));
@@ -33393,41 +33347,83 @@ function BadQOnlineSheet({
     }
   };
   const doLogout = async () => {
-    // Logout is Auth-only (section L): sign out + let Online UI return to disconnected. Never touches BadQ
-    // local data, never touches deviceId, never releases activeDeviceId — Active Device authority is a
-    // separate concept from this browser's login session and stays exactly as it was.
+    // Auth-only: signs out of the Commercial account. Local BadQ data, the device credential and every cloud binding stay
+    // exactly as they were (a different Owner signing in later stays fenced by account-mismatch).
     setBusy(true);
     setErr("");
     try {
-      await cloud.signOutOwner();
-      setWorkspace(null);
+      await commercial.signOutOwner();
+      setRegisterOpen(false);
+      setManageOpen(false);
     } catch (e) {
       setErr(cloudErrorMessage(e, t));
     } finally {
       setBusy(false);
     }
   };
-  const doTakeover = async () => {
+  const openRegister = () => {
+    setDeviceErr("");
+    setReauthPassword("");
+    setDeviceLabel(describeThisDevice(t));
+    setRegisterOpen(true);
+  };
+  const doEnroll = async () => {
     setBusy(true);
-    setErr("");
+    setDeviceErr("");
     try {
-      // v1.12.11: currentActiveSessionId is meaningless for a genuine different-device takeover (Case C
-      // server-side is gated on confirmTakeover alone, never on session proof -- see functions/index.js) but
-      // is passed through anyway for call-shape consistency with the auto-claim effect above; the Cloud
-      // Function ignores it on this path.
-      const res = await cloud.claimActiveDevice(workspace.id, deviceId, APP_VERSION, {
-        isTakeover: true,
-        currentActiveSessionId: activeSessionId
+      if (needsRecentAuth) await commercial.reauthenticateOwner(reauthPassword);
+      setReauthPassword("");
+      await commercial.enrollThisDevice({
+        confirm: true,
+        label: deviceLabel.trim() || describeThisDevice(t)
       });
-      if (res && res.activeSessionId) await persistSessionId(res.activeSessionId);
-      setTakeoverDismissed(false);
+      setRegisterOpen(false);
     } catch (e) {
-      setErr(cloudErrorMessage(e, t));
+      // States with their own card (limit / migration / revoked / unauthorized) close the dialog; recoverable ones (recent sign-in, network) keep it open.
+      if (e && ["DEVICE_LIMIT_REACHED", "device-policy-migration-required", "device-revoked", "device-credential-invalid"].includes(e.code)) setRegisterOpen(false);else setDeviceErr(deviceError(e));
     } finally {
       setBusy(false);
     }
   };
-  const activeSinceDate = workspace ? firestoreTsToDate(workspace.activeDeviceSince) : null;
+  const doReauthorizeThisDevice = async () => {
+    setBusy(true);
+    setDeviceErr("");
+    try {
+      if (needsRecentAuth) {
+        await commercial.reauthenticateOwner(reauthPassword);
+        setReauthPassword("");
+      }
+      const list = await commercial.listOwnerDevices();
+      const mine = list.find(entry => entry.isCurrent);
+      if (!mine) throw Object.assign(new Error("device-not-found"), {
+        code: "device-not-found"
+      });
+      await commercial.reauthorizeOwnerDevice(mine.ref, {
+        confirm: true
+      });
+      setRevokedConfirm(false);
+    } catch (e) {
+      setDeviceErr(deviceError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const status = deriveOnlineStatus({
+    available: commercialAvailable,
+    user,
+    device,
+    isOffline
+  });
+  const meta = ONLINE_STATUS_META[status];
+  const max = device && device.maxAuthorizedDevices || 2;
+  const dStatus = device ? device.status : "signed_out";
+  const card = (bg, border) => ({
+    padding: 12,
+    borderRadius: 11,
+    background: bg,
+    border: `1px solid ${border}`,
+    marginBottom: 10
+  });
   return /*#__PURE__*/React.createElement(Overlay, {
     onClose: onClose
   }, /*#__PURE__*/React.createElement("div", {
@@ -33436,7 +33432,8 @@ function BadQOnlineSheet({
       fontWeight: 800,
       marginBottom: 4
     }
-  }, "\u2601\uFE0F BadQ Online (Beta)"), /*#__PURE__*/React.createElement("div", {
+  }, t("online.accountTitle")), /*#__PURE__*/React.createElement("div", {
+    "data-testid": "online-status",
     style: {
       display: "flex",
       alignItems: "center",
@@ -33453,14 +33450,14 @@ function BadQOnlineSheet({
       fontWeight: 700,
       color: meta.color
     }
-  }, t(ONLINE_STATUS_LABEL_KEY[status]))), !authUser && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, t(ONLINE_STATUS_LABEL_KEY[status]))), !user && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11.5,
       color: T.muted,
       marginBottom: 2,
       lineHeight: 1.6
     }
-  }, t("online.intro")), /*#__PURE__*/React.createElement("div", {
+  }, t("online.introOwner")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10.5,
       color: T.muted,
@@ -33468,7 +33465,7 @@ function BadQOnlineSheet({
       lineHeight: 1.6,
       fontStyle: "italic"
     }
-  }, t("online.betaNotice")), !available && /*#__PURE__*/React.createElement("div", {
+  }, t("online.betaNotice")), !commercialAvailable && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 12,
       borderRadius: 11,
@@ -33479,7 +33476,7 @@ function BadQOnlineSheet({
       lineHeight: 1.7,
       marginBottom: 10
     }
-  }, t("online.firebaseUnavailable")), /*#__PURE__*/React.createElement("div", {
+  }, t("online.accountUnavailable")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -33496,10 +33493,11 @@ function BadQOnlineSheet({
       padding: "8px 0",
       borderRadius: 9,
       border: `1px solid ${T.border}`,
-      background: authMode === "signin" ? T.green : T.surface,
+      background: authMode === "signin" ? T.accent : T.surface,
       color: authMode === "signin" ? "#fff" : T.text,
       fontSize: 12.5,
-      fontWeight: 700
+      fontWeight: 700,
+      cursor: "pointer"
     }
   }, t("online.auth.signIn")), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
@@ -33512,13 +33510,15 @@ function BadQOnlineSheet({
       padding: "8px 0",
       borderRadius: 9,
       border: `1px solid ${T.border}`,
-      background: authMode === "register" ? T.green : T.surface,
+      background: authMode === "register" ? T.accent : T.surface,
       color: authMode === "register" ? "#fff" : T.text,
       fontSize: 12.5,
-      fontWeight: 700
+      fontWeight: 700,
+      cursor: "pointer"
     }
   }, t("online.auth.createOwner"))), /*#__PURE__*/React.createElement("input", {
     type: "email",
+    "data-testid": "owner-email",
     placeholder: t("online.auth.email"),
     value: email,
     onChange: e => setEmail(e.target.value),
@@ -33528,11 +33528,14 @@ function BadQOnlineSheet({
       padding: "9px 10px",
       borderRadius: 9,
       border: `1px solid ${T.border}`,
+      background: T.surface,
+      color: T.text,
       fontSize: 13,
       marginBottom: 8
     }
   }), /*#__PURE__*/React.createElement("input", {
     type: "password",
+    "data-testid": "owner-password",
     placeholder: t("online.auth.password"),
     value: password,
     onChange: e => setPassword(e.target.value),
@@ -33542,11 +33545,14 @@ function BadQOnlineSheet({
       padding: "9px 10px",
       borderRadius: 9,
       border: `1px solid ${T.border}`,
+      background: T.surface,
+      color: T.text,
       fontSize: 13,
       marginBottom: 8
     }
   }), authMode === "register" && /*#__PURE__*/React.createElement("input", {
     type: "password",
+    "data-testid": "owner-password-confirm",
     placeholder: t("online.auth.confirmPassword"),
     value: confirmPassword,
     onChange: e => setConfirmPassword(e.target.value),
@@ -33556,6 +33562,8 @@ function BadQOnlineSheet({
       padding: "9px 10px",
       borderRadius: 9,
       border: `1px solid ${T.border}`,
+      background: T.surface,
+      color: T.text,
       fontSize: 13,
       marginBottom: 8
     }
@@ -33572,22 +33580,18 @@ function BadQOnlineSheet({
       color: T.green
     }
   }, notice), /*#__PURE__*/React.createElement("button", {
-    disabled: busy || !available || !email || !password || authMode === "register" && !confirmPassword,
+    "data-testid": "owner-submit",
+    disabled: busy || !commercialAvailable || !email || !password || authMode === "register" && !confirmPassword,
     onClick: authMode === "register" ? doRegister : doSignIn,
     style: {
+      ...btnPrimary,
       width: "100%",
-      padding: "10px 0",
-      borderRadius: 9,
-      border: "none",
-      background: T.accent,
-      color: "#fff",
-      fontSize: 13,
-      fontWeight: 800,
-      opacity: busy || !available ? 0.6 : 1,
-      marginBottom: 8
+      marginBottom: 8,
+      opacity: busy ? 0.6 : 1
     }
   }, busy ? t("online.auth.working") : authMode === "register" ? t("online.auth.createOwner") : t("online.auth.signIn")), authMode === "signin" && /*#__PURE__*/React.createElement("button", {
-    disabled: busy || !available,
+    "data-testid": "owner-reset",
+    disabled: busy || !commercialAvailable,
     onClick: doPasswordReset,
     style: {
       width: "100%",
@@ -33597,9 +33601,9 @@ function BadQOnlineSheet({
       color: T.muted,
       fontSize: 12,
       fontWeight: 700,
-      textDecoration: "underline"
+      cursor: "pointer"
     }
-  }, t("online.auth.forgotPassword"))), authUser && !authUser.emailVerified && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, t("online.auth.forgotPassword"))), user && !user.emailVerified && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 12,
       borderRadius: 11,
@@ -33611,61 +33615,307 @@ function BadQOnlineSheet({
       marginBottom: 12
     }
   }, t("online.auth.verifyPrompt", {
-    email: authUser.email
+    email: user.email
   })), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "owner-resend",
     disabled: busy,
     onClick: doResendVerification,
     style: {
+      ...btnSecondary,
       width: "100%",
-      padding: "10px 0",
-      borderRadius: 9,
-      border: `1px solid ${T.border}`,
-      background: T.surface,
-      color: T.text,
-      fontSize: 13,
-      fontWeight: 700,
       marginBottom: 8
     }
   }, t("online.auth.resendVerification")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "owner-recheck",
     disabled: busy,
     onClick: doRecheckVerification,
     style: {
+      ...btnPrimary,
       width: "100%",
-      padding: "10px 0",
-      borderRadius: 9,
-      border: "none",
-      background: T.accent,
-      color: "#fff",
-      fontSize: 13,
-      fontWeight: 800,
-      marginBottom: 8,
-      opacity: busy ? 0.6 : 1
+      marginBottom: 8
     }
-  }, busy ? t("online.auth.checking") : t("online.auth.checkAgain")), /*#__PURE__*/React.createElement("button", {
+  }, busy ? t("online.auth.checking") : t("online.auth.checkAgain")), err && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 8,
+      fontSize: 12,
+      color: T.accent
+    }
+  }, err), notice && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 8,
+      fontSize: 12,
+      color: T.green
+    }
+  }, notice), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "owner-signout",
     disabled: busy,
     onClick: doLogout,
     style: btnSecondary
-  }, t("online.auth.signOut"))), (authUser && authUser.emailVerified || phase2GroupLinking && commercialUser && commercialUser.emailVerified) && /*#__PURE__*/React.createElement("div", null, authUser && authUser.emailVerified && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 12,
-      borderRadius: 11,
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      marginBottom: 10
-    }
+  }, t("online.auth.signOut"))), user && user.emailVerified && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    "data-testid": "owner-account",
+    style: card(T.surface, T.border)
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12.5,
       fontWeight: 800,
       color: T.text
     }
-  }, authUser.email), /*#__PURE__*/React.createElement("div", {
+  }, user.email), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10.5,
       color: T.muted,
       marginTop: 2
     }
-  }, t("online.auth.verified"))), phase2GroupLinking && commercialUser && commercialUser.emailVerified && /*#__PURE__*/React.createElement("div", {
+  }, t("online.auth.verified"))), dStatus === "authorized" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-state-authorized",
+    style: card("#e2f5ec", T.green)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      fontWeight: 800,
+      color: T.green
+    }
+  }, t("online.device.authorizedThis")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-manage",
+    onClick: () => setManageOpen(true),
+    style: {
+      ...btnSecondary,
+      marginTop: 8,
+      width: "100%"
+    }
+  }, t("online.device.manage"))), (dStatus === "needs_enrollment" || dStatus === "enrolling" || dStatus === "reauth_required") && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-state-needs-enrollment",
+    style: card(T.surface, T.border)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      fontWeight: 800,
+      color: T.text,
+      marginBottom: 4
+    }
+  }, t("online.device.registerTitle")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6,
+      marginBottom: 8
+    }
+  }, t("online.device.registerBody", {
+    max
+  })), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-register-open",
+    disabled: busy,
+    onClick: openRegister,
+    style: {
+      ...btnPrimary,
+      width: "100%"
+    }
+  }, t("online.device.registerAction"))), dStatus === "limit_reached" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-state-limit",
+    style: card("#fdeae7", T.accent)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      fontWeight: 800,
+      color: T.text,
+      marginBottom: 4
+    }
+  }, t("online.device.limitTitle", {
+    max
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: "#7a2e22",
+      lineHeight: 1.6,
+      marginBottom: 8
+    }
+  }, t("online.device.limitBody")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-manage",
+    onClick: () => setManageOpen(true),
+    style: {
+      ...btnPrimary,
+      flex: 1
+    }
+  }, t("online.device.manage")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-register-open",
+    disabled: busy,
+    onClick: openRegister,
+    style: {
+      ...btnSecondary,
+      flex: 1
+    }
+  }, t("online.device.registerRetry")))), dStatus === "revoked" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-state-revoked",
+    style: card("#fdeae7", T.accent)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      fontWeight: 800,
+      color: T.text,
+      marginBottom: 4
+    }
+  }, t("online.device.revokedTitle")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: "#7a2e22",
+      lineHeight: 1.6,
+      marginBottom: 8
+    }
+  }, t("online.device.revokedBody")), !revokedConfirm ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-reauthorize-open",
+    disabled: busy,
+    onClick: () => {
+      setDeviceErr("");
+      setRevokedConfirm(true);
+    },
+    style: {
+      ...btnPrimary,
+      flex: 1
+    }
+  }, t("online.device.reauthorize")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-manage",
+    onClick: () => setManageOpen(true),
+    style: {
+      ...btnSecondary,
+      flex: 1
+    }
+  }, t("online.device.manage"))) : /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-reauthorize-confirm"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: T.text,
+      lineHeight: 1.6,
+      marginBottom: 8
+    }
+  }, t("online.device.reauthorizeConfirm", {
+    max
+  })), needsRecentAuth && /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    "data-testid": "device-reauth-password",
+    placeholder: t("online.auth.password"),
+    value: reauthPassword,
+    onChange: e => setReauthPassword(e.target.value),
+    style: {
+      width: "100%",
+      boxSizing: "border-box",
+      padding: "9px 10px",
+      borderRadius: 9,
+      border: `1px solid ${T.border}`,
+      background: T.surface,
+      color: T.text,
+      fontSize: 13,
+      marginBottom: 8
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    disabled: busy,
+    onClick: () => {
+      setRevokedConfirm(false);
+      setDeviceErr("");
+    },
+    style: {
+      ...btnSecondary,
+      flex: 1
+    }
+  }, t("common.cancel")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-reauthorize-confirm-button",
+    disabled: busy || needsRecentAuth && !reauthPassword,
+    onClick: doReauthorizeThisDevice,
+    style: {
+      ...btnPrimary,
+      flex: 1
+    }
+  }, t("common.confirm")))), deviceErr && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-error",
+    style: {
+      marginTop: 8,
+      fontSize: 11.5,
+      color: T.accent
+    }
+  }, deviceErr)), dStatus === "unauthorized" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-state-unauthorized",
+    style: card("#fdeae7", T.accent)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      fontWeight: 800,
+      color: T.text,
+      marginBottom: 4
+    }
+  }, t("online.device.unauthorizedTitle")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: "#7a2e22",
+      lineHeight: 1.6,
+      marginBottom: 8
+    }
+  }, t("online.device.unauthorizedBody")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-manage",
+    onClick: () => setManageOpen(true),
+    style: {
+      ...btnSecondary,
+      width: "100%"
+    }
+  }, t("online.device.manage"))), dStatus === "migration_required" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-state-migration",
+    style: card("#fdeae7", T.accent)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      fontWeight: 800,
+      color: T.text,
+      marginBottom: 4
+    }
+  }, t("online.device.migrationTitle")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: "#7a2e22",
+      lineHeight: 1.6
+    }
+  }, t("online.device.migrationBody"))), dStatus === "account_mismatch" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-state-mismatch",
+    style: card("#fdeae7", T.accent)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: "#7a2e22",
+      lineHeight: 1.6
+    }
+  }, t("online.error.accountMismatch"))), (dStatus === "offline" || dStatus === "unavailable") && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-state-offline",
+    style: card(T.surface, T.border)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.muted,
+      lineHeight: 1.6
+    }
+  }, dStatus === "unavailable" && device.errorCode && !["verification-unavailable", "offline"].includes(device.errorCode) ? cloudErrorMessage({
+    code: device.errorCode
+  }, t) : t("online.device.offlineNote"))), (dStatus === "unknown" || dStatus === "signed_out") && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-state-checking",
+    style: card(T.surface, T.border)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.muted
+    }
+  }, t("online.auth.checking"))), phase2GroupLinking && deviceAuthorized && /*#__PURE__*/React.createElement("div", {
     "data-testid": "badminton-group-linking",
     style: {
       padding: 12,
@@ -33799,316 +34049,7 @@ function BadQOnlineSheet({
       fontSize: 11.5,
       color: T.accent
     }
-  }, phase2Error))), authUser && authUser.emailVerified && /*#__PURE__*/React.createElement(React.Fragment, null, cloudError && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 12,
-      borderRadius: 11,
-      background: "#fdeae7",
-      border: `1px solid ${T.accent}`,
-      fontSize: 12,
-      color: T.accent,
-      marginBottom: 10
-    }
-  }, t("online.cloud.connectionError", {
-    error: cloudErrorMessage(cloudError, t)
-  })), isOffline && !cloudError && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 12,
-      borderRadius: 11,
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      fontSize: 12,
-      color: T.muted,
-      marginBottom: 10
-    }
-  }, t("online.cloud.offlineReconnect")), !phase2GroupLinking && !workspace && !cloudError && !isOffline && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 12,
-      borderRadius: 11,
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      fontSize: 12,
-      color: T.muted,
-      marginBottom: 10
-    }
-  }, t("online.cloud.connectingWorkspace")), hasConflict && !takeoverDismissed && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 12,
-      borderRadius: 11,
-      background: "#fdeae7",
-      border: `1px solid ${T.accent}`,
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12.5,
-      fontWeight: 800,
-      color: T.text,
-      marginBottom: 4
-    }
-  }, everActiveHere ? t("online.device.movedTitle") : t("online.device.activeElsewhereTitle")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11.5,
-      color: "#7a2e22",
-      lineHeight: 1.6,
-      marginBottom: 10
-    }
-  }, t("online.device.takeoverBody")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    disabled: busy,
-    onClick: () => setTakeoverDismissed(true),
-    style: {
-      flex: 1,
-      padding: "9px 0",
-      borderRadius: 9,
-      border: `1px solid ${T.border}`,
-      background: T.surface,
-      color: T.text,
-      fontSize: 12.5,
-      fontWeight: 700
-    }
-  }, t("common.cancel")), /*#__PURE__*/React.createElement("button", {
-    disabled: busy,
-    onClick: doTakeover,
-    style: {
-      flex: 1.4,
-      padding: "9px 0",
-      borderRadius: 9,
-      border: "none",
-      background: T.accent,
-      color: "#fff",
-      fontSize: 12.5,
-      fontWeight: 800,
-      opacity: busy ? 0.6 : 1
-    }
-  }, busy ? t("online.device.moving") : t("online.device.moveHere")))), hasConflict && takeoverDismissed && /*#__PURE__*/React.createElement("button", {
-    onClick: () => setTakeoverDismissed(false),
-    style: {
-      width: "100%",
-      textAlign: "left",
-      padding: "10px 12px",
-      borderRadius: 11,
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      fontSize: 12,
-      color: T.muted,
-      marginBottom: 10
-    }
-  }, "\uD83D\uDD12 ", t("online.device.collapsed", {
-    state: everActiveHere ? t("online.status.moved") : t("online.device.activeElsewhereShort")
-  })), status === ONLINE_STATUS.ACTIVE && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 12,
-      borderRadius: 11,
-      background: "#e2f5ec",
-      border: `1px solid ${T.green}`,
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12.5,
-      fontWeight: 800,
-      color: T.green
-    }
-  }, t("online.device.activeThis")), activeSinceDate && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10.5,
-      color: T.muted,
-      marginTop: 2
-    }
-  }, t("online.device.since", {
-    when: fmtDateTime ? fmtDateTime(activeSinceDate.getTime()) : activeSinceDate.toLocaleString("th-TH", {
-      dateStyle: "medium",
-      timeStyle: "short"
-    })
-  }))), status === ONLINE_STATUS.ACTIVE && cloudInitState && cloudInitState.clubsInitialized === false && !initDone && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 12,
-      borderRadius: 11,
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12.5,
-      fontWeight: 800,
-      color: T.text,
-      marginBottom: 4
-    }
-  }, t("online.cloud.emptyTitle")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: T.muted,
-      marginBottom: 8,
-      lineHeight: 1.6
-    }
-  }, t("online.cloud.emptyBody")), /*#__PURE__*/React.createElement("button", {
-    disabled: initBusy,
-    onClick: () => setInitConfirmOpen(true),
-    style: {
-      width: "100%",
-      padding: "9px 0",
-      borderRadius: 9,
-      border: "none",
-      background: T.accent,
-      color: "#fff",
-      fontSize: 12.5,
-      fontWeight: 800,
-      opacity: initBusy ? 0.6 : 1
-    }
-  }, t("online.cloud.createFirst"))), status === ONLINE_STATUS.ACTIVE && cloudInitState && cloudInitState.clubsInitialized === true && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 12,
-      borderRadius: 11,
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      marginBottom: 10,
-      fontSize: 11.5,
-      color: T.muted
-    }
-  }, /*#__PURE__*/React.createElement("div", null, t("online.cloud.existing")), cloudClubsLoading && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 6
-    }
-  }, t("online.cloud.loadingGroups")), !cloudClubsLoading && cloudClubsErr && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 6,
-      color: T.accent
-    }
-  }, t("online.cloud.clubListLoadError")), !cloudClubsLoading && !cloudClubsErr && cloudClubs && cloudClubs.length === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 6
-    }
-  }, t("online.cloud.noGroupsYet")), !cloudClubsLoading && !cloudClubsErr && cloudClubs && cloudClubs.length > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 6,
-      color: T.text,
-      fontWeight: 700
-    }
-  }, cloudClubs.map(c => c && c.name || t("online.cloud.unnamed")).join(", "))), initConfirmOpen && /*#__PURE__*/React.createElement(Overlay, {
-    onClose: () => {
-      if (!initBusy) setInitConfirmOpen(false);
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 800,
-      marginBottom: 8
-    }
-  }, t("online.cloud.createFirstConfirm")), localGroupNames.length > 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: T.muted,
-      marginBottom: 4
-    }
-  }, t("online.cloud.selectFirst")), /*#__PURE__*/React.createElement("select", {
-    value: cloudInitGroupName,
-    onChange: e => setSelectedGroupName(e.target.value),
-    style: {
-      width: "100%",
-      boxSizing: "border-box",
-      padding: "8px 10px",
-      borderRadius: 9,
-      border: `1px solid ${T.border}`,
-      fontSize: 13,
-      background: T.surface,
-      color: T.text
-    }
-  }, localGroupNames.map(name => /*#__PURE__*/React.createElement("option", {
-    key: name,
-    value: name
-  }, name)))) : /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: T.text,
-      marginBottom: 8,
-      lineHeight: 1.7
-    }
-  }, t("online.cloud.noLocalGroupsFallback", {
-    name: cloudInitGroupName
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: T.text,
-      marginBottom: 8,
-      lineHeight: 1.7
-    }
-  }, t("online.cloud.uploadNameOnly", {
-    name: cloudInitGroupName
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11.5,
-      color: T.accent,
-      marginBottom: 10,
-      lineHeight: 1.7,
-      background: "#fdeae7",
-      borderRadius: 8,
-      padding: "8px 10px"
-    }
-  }, t("online.cloud.notUploading", {
-    otherGroups: otherLocalGroupCount > 0 ? t("online.cloud.otherGroups", {
-      count: otherLocalGroupCount
-    }) : "",
-    sessionCount: localSessionCount
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: T.muted,
-      marginBottom: 14,
-      lineHeight: 1.6
-    }
-  }, t("online.cloud.deviceSummary", {
-    deviceType: navigator && navigator.userAgent && /iPhone|Android|Mobile/i.test(navigator.userAgent) ? t("online.device.mobile") : t("online.device.desktopTablet"),
-    count: localGroupCount
-  }), localMostRecentAt > 0 && /*#__PURE__*/React.createElement("div", null, t("online.cloud.updatedAt", {
-    when: fmtDateTime ? fmtDateTime(localMostRecentAt) : new Date(localMostRecentAt).toLocaleString("th-TH", {
-      dateStyle: "medium",
-      timeStyle: "short"
-    })
-  }))), initErr && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 10,
-      fontSize: 12,
-      color: T.accent
-    }
-  }, initErr), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    disabled: initBusy,
-    onClick: () => setInitConfirmOpen(false),
-    style: btnSecondary
-  }, t("common.cancel")), /*#__PURE__*/React.createElement("button", {
-    disabled: initBusy,
-    onClick: doConfirmInitialCloudData,
-    style: {
-      ...btnPrimary,
-      opacity: initBusy ? 0.6 : 1
-    }
-  }, initBusy ? t("common.saving") : t("common.confirm")))), initDone &&
-  /*#__PURE__*/
-  // v1.12.29: still names the exact club created (now Owner-selectable via UX-1) and restates the
-  // scope limit, same discipline as the v1.12.28 BUG-1 fix.
-  React.createElement("div", {
-    style: {
-      marginBottom: 10,
-      fontSize: 12,
-      color: T.green
-    }
-  }, t("online.cloud.created", {
-    name: cloudInitGroupName
-  })), err && /*#__PURE__*/React.createElement("div", {
+  }, phase2Error))), err && /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 10,
       fontSize: 12,
@@ -34121,10 +34062,363 @@ function BadQOnlineSheet({
       color: T.green
     }
   }, notice), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "owner-signout",
     disabled: busy,
     onClick: doLogout,
     style: btnSecondary
-  }, t("online.auth.signOut")))));
+  }, t("online.auth.signOut"))), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "online-close",
+    onClick: onClose,
+    style: {
+      ...btnSecondary,
+      width: "100%",
+      marginTop: 14
+    }
+  }, t("common.close")), registerOpen && user && user.emailVerified && /*#__PURE__*/React.createElement(Overlay, {
+    onClose: () => {
+      if (!busy) setRegisterOpen(false);
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-register-dialog"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      marginBottom: 8
+    }
+  }, t("online.device.registerTitle")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.text,
+      lineHeight: 1.7,
+      marginBottom: 10
+    }
+  }, t("online.device.registerBody", {
+    max
+  })), /*#__PURE__*/React.createElement(Label, null, t("online.device.nameLabel")), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    "data-testid": "device-name-input",
+    maxLength: 80,
+    value: deviceLabel,
+    onChange: e => setDeviceLabel(e.target.value),
+    style: {
+      width: "100%",
+      boxSizing: "border-box",
+      padding: "9px 10px",
+      borderRadius: 9,
+      border: `1px solid ${T.border}`,
+      background: T.surface,
+      color: T.text,
+      fontSize: 13,
+      marginBottom: 10
+    }
+  }), needsRecentAuth && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6,
+      marginBottom: 6
+    }
+  }, t("online.device.reauthBody")), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    "data-testid": "device-reauth-password",
+    placeholder: t("online.auth.password"),
+    value: reauthPassword,
+    onChange: e => setReauthPassword(e.target.value),
+    style: {
+      width: "100%",
+      boxSizing: "border-box",
+      padding: "9px 10px",
+      borderRadius: 9,
+      border: `1px solid ${T.border}`,
+      background: T.surface,
+      color: T.text,
+      fontSize: 13
+    }
+  })), deviceErr && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-error",
+    style: {
+      marginBottom: 10,
+      fontSize: 12,
+      color: T.accent
+    }
+  }, deviceErr), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    disabled: busy,
+    onClick: () => setRegisterOpen(false),
+    style: btnSecondary
+  }, t("common.cancel")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-register-confirm",
+    disabled: busy || !deviceLabel.trim() || needsRecentAuth && !reauthPassword,
+    onClick: doEnroll,
+    style: {
+      ...btnPrimary,
+      opacity: busy ? 0.6 : 1
+    }
+  }, busy ? t("online.device.registering") : t("online.device.registerAction"))))), manageOpen && user && user.emailVerified && /*#__PURE__*/React.createElement(DeviceManagementSheet, {
+    commercial: commercial,
+    device: device,
+    t: t,
+    fmtDateTime: fmtDateTime,
+    onClose: () => setManageOpen(false)
+  }));
+}
+
+// Owner device management: list (this device marked), explicit revoke, explicit reauthorize. Raw device ids / keys are never
+// shown (the bridge only hands out opaque row refs). Revoking never deletes any local BadQ data.
+function DeviceManagementSheet({
+  commercial,
+  device,
+  t,
+  fmtDateTime,
+  onClose
+}) {
+  const [rows, setRows] = useState(null);
+  const [loadErr, setLoadErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState(null); // { kind: "revoke" | "reauthorize", ref }
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const max = device && device.maxAuthorizedDevices || 2;
+  const needsRecentAuth = !!(device && device.status === "reauth_required");
+  const load = async () => {
+    setLoadErr("");
+    try {
+      setRows(await commercial.listOwnerDevices());
+    } catch (e) {
+      setRows(null);
+      setLoadErr(cloudErrorMessage(e, t));
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+  useEffect(() => {
+    if (rows) load();
+  }, [device && device.status]);
+  const act = async () => {
+    if (!pending) return;
+    setBusy(true);
+    setErr("");
+    try {
+      if (pending.kind === "revoke") setRows(await commercial.revokeOwnerDevice(pending.ref, {
+        explicit: true
+      }));else {
+        if (needsRecentAuth) {
+          await commercial.reauthenticateOwner(password);
+          setPassword("");
+        }
+        setRows(await commercial.reauthorizeOwnerDevice(pending.ref, {
+          confirm: true
+        }));
+      }
+      setPending(null);
+    } catch (e) {
+      setErr(cloudErrorMessage(e, t));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const platformLabel = p => p === "ios" ? "iOS" : p === "android" ? "Android" : p === "web" ? t("online.device.platformWeb") : "";
+  const pendingRow = pending && rows ? rows.find(row => row.ref === pending.ref) : null;
+  return /*#__PURE__*/React.createElement(Overlay, {
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-management"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      marginBottom: 4
+    }
+  }, t("online.device.manage")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6,
+      marginBottom: 12
+    }
+  }, t("online.device.manageHint", {
+    max
+  })), rows === null && !loadErr && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.muted
+    }
+  }, t("online.device.listLoading")), loadErr && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-list-error",
+    style: {
+      fontSize: 12,
+      color: T.accent,
+      marginBottom: 8
+    }
+  }, t("online.device.listError"), " \u2014 ", loadErr), rows && rows.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.muted
+    }
+  }, t("online.device.listEmpty")), rows && rows.map(row => /*#__PURE__*/React.createElement("div", {
+    key: row.ref,
+    "data-testid": `device-row-${row.ref}`,
+    "data-current": row.isCurrent ? "true" : "false",
+    "data-status": row.status,
+    style: {
+      padding: "10px 0",
+      borderTop: `1px solid ${T.border}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 800,
+      color: T.text,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  }, row.label || t("online.device.defaultName"), row.isCurrent ? ` · ${t("online.device.thisDevice")}` : ""), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: T.muted
+    }
+  }, [platformLabel(row.platform), row.lastSeenAt ? t("online.device.lastSeen", {
+    when: fmtDateTime ? fmtDateTime(Date.parse(row.lastSeenAt)) : row.lastSeenAt
+  }) : ""].filter(Boolean).join(" · "))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      fontWeight: 800,
+      color: row.status === "authorized" ? T.green : T.accent
+    }
+  }, row.status === "authorized" ? t("online.device.statusAuthorized") : t("online.device.statusRevoked"))), !pending && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6
+    }
+  }, row.status === "authorized" ? /*#__PURE__*/React.createElement("button", {
+    "data-testid": `device-revoke-${row.ref}`,
+    disabled: busy,
+    onClick: () => {
+      setErr("");
+      setPending({
+        kind: "revoke",
+        ref: row.ref
+      });
+    },
+    style: {
+      ...btnSecondary,
+      flex: "none",
+      padding: "5px 10px",
+      fontSize: 11.5,
+      color: T.accent
+    }
+  }, t("online.device.revoke")) : /*#__PURE__*/React.createElement("button", {
+    "data-testid": `device-reauthorize-${row.ref}`,
+    disabled: busy,
+    onClick: () => {
+      setErr("");
+      setPending({
+        kind: "reauthorize",
+        ref: row.ref
+      });
+    },
+    style: {
+      ...btnSecondary,
+      flex: "none",
+      padding: "5px 10px",
+      fontSize: 11.5
+    }
+  }, t("online.device.reauthorizeOther"))))), pending && pendingRow && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-action-confirm",
+    style: {
+      marginTop: 10,
+      padding: 10,
+      borderRadius: 9,
+      background: T.surface2,
+      border: `1px solid ${T.border}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.text,
+      lineHeight: 1.6,
+      marginBottom: 8
+    }
+  }, pending.kind === "revoke" ? t(pendingRow.isCurrent ? "online.device.revokeThisConfirm" : "online.device.revokeConfirm", {
+    name: pendingRow.label || t("online.device.defaultName")
+  }) : t("online.device.reauthorizeConfirm", {
+    max
+  })), pending.kind === "reauthorize" && needsRecentAuth && /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    "data-testid": "device-reauth-password",
+    placeholder: t("online.auth.password"),
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    style: {
+      width: "100%",
+      boxSizing: "border-box",
+      padding: "9px 10px",
+      borderRadius: 9,
+      border: `1px solid ${T.border}`,
+      background: T.surface,
+      color: T.text,
+      fontSize: 13,
+      marginBottom: 8
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    disabled: busy,
+    onClick: () => {
+      setPending(null);
+      setErr("");
+    },
+    style: {
+      ...btnSecondary,
+      flex: 1
+    }
+  }, t("common.cancel")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-action-confirm-button",
+    disabled: busy || pending.kind === "reauthorize" && needsRecentAuth && !password,
+    onClick: act,
+    style: {
+      ...btnPrimary,
+      flex: 1
+    }
+  }, t("common.confirm")))), err && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-error",
+    style: {
+      marginTop: 8,
+      fontSize: 11.5,
+      color: T.accent
+    }
+  }, err), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    style: {
+      ...btnSecondary,
+      marginTop: 14,
+      width: "100%"
+    }
+  }, t("common.close"))));
 }
 
 // v1.12.12 (P2.2 IA cleanup): the legacy "Member Portal (Beta)" sheet (v1.11.35, its own separate
@@ -44739,8 +45033,7 @@ function SettingsTab({
       margin: "16px 2px 8px"
     }
   }, children);
-  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, "\u2601\uFE0F BadQ Online (Beta)"), /*#__PURE__*/React.createElement(BadQOnlineNavRow, {
-    deviceId: deviceId,
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionLabel, null, t("online.accountTitle")), /*#__PURE__*/React.createElement(BadQOnlineNavRow, {
     onOpen: () => setView("online"),
     tr: t
   }), /*#__PURE__*/React.createElement(SectionLabel, null, t("settings.sectionLabel")), /*#__PURE__*/React.createElement(Row, {
@@ -44810,7 +45103,6 @@ function SettingsTab({
     fmtDateTime: fmtDateTime,
     onClose: () => setView(null)
   }), view === "online" && /*#__PURE__*/React.createElement(BadQOnlineSheet, {
-    deviceId: deviceId,
     groupDefaults: groupDefaults,
     sessionHistory: sessionHistory,
     localGroups: localGroups,

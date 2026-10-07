@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from "react";
 import { User, Search, Camera, Plus, Trash2, Check, X, Shuffle, Play, RotateCcw, Minus, ChevronDown, ChevronUp, Clock, Lock, Unlock, Calendar, ChevronRight, History, ClipboardList, Undo2, Info, QrCode, Maximize2, Wallet, Trophy, Upload, Share2, LogOut, Download, Gift } from "lucide-react";
 
-const APP_VERSION = "1.14.9";
+const APP_VERSION = "1.15.0";
 
 const LEVELS = ["R", "BG1", "BG2", "BG3", "S-", "S", "N-", "N", "P-", "P", "C"];
 const WEIGHT = { R: 1, BG1: 2, BG2: 3, BG3: 4, "S-": 5, S: 6, "N-": 7, N: 8, "P-": 9, P: 10, C: 11 };
@@ -15673,33 +15673,64 @@ function RankTierEditSheet({ tier, onSave, onDelete, onClose, t }) {
 // Centralized Online status model (spec section K) — one small derivation function instead of scattered
 // booleans, reused by both the compact NavRow and the full sheet below, and available to any future P2
 // screen that needs to reason about cloud connection state.
+// v1.15.0 (Phase 5A) — ONE visible Owner identity: the Commercial Firebase account (BadQCommercialBridge). The legacy
+// BadQCloud Owner login / Workspace / Single-Active-Device layer is no longer part of the user-facing path (see the
+// BadQOnlineSheet header). Cloud capability needs: verified Commercial Owner + server-authorized THIS device (max 2).
 const ONLINE_STATUS = {
-  NOT_CONNECTED: "not_connected", // never signed in on this device, or workspace not yet resolved
-  OFFLINE: "offline",             // signed in before, but this device currently has no network
-  UNVERIFIED: "unverified",       // signed in, email not verified yet — not an authorized Online Owner
-  ACTIVE: "active",               // signed in, verified, Workspace resolved, THIS device is the active one
-  REVOKED: "revoked",             // signed in, verified, but a DIFFERENT device is now the active one
-  ERROR: "error",                 // an unexpected Auth/Firestore error occurred
+  NOT_CONNECTED: "not_connected", // signed out, or the Commercial service is not configured in this build
+  CHECKING: "checking",           // signed in + verified, device/identity validation not finished yet
+  OFFLINE: "offline",             // network unavailable — never interpreted as a revoked identity/device
+  UNVERIFIED: "unverified",       // signed in, email not verified yet
+  ACTIVE: "active",               // verified Owner + this device authorized (server-confirmed)
+  NEEDS_DEVICE: "needs_device",   // verified Owner, this installation not registered yet (explicit Owner action)
+  DEVICE_LIMIT: "device_limit",   // 2 devices already authorized
+  DEVICE_REVOKED: "device_revoked",
+  DEVICE_UNAUTHORIZED: "device_unauthorized",
+  MISMATCH: "mismatch",           // a different Owner than the one this device's cloud links belong to
+  ERROR: "error",
 };
 const ONLINE_STATUS_META = {
   [ONLINE_STATUS.NOT_CONNECTED]: { icon: "☁️", label: "ยังไม่ได้เชื่อมต่อ", color: T.muted },
+  [ONLINE_STATUS.CHECKING]: { icon: "🟠", label: "กำลังตรวจสอบ…", color: "#b45309" },
   [ONLINE_STATUS.OFFLINE]: { icon: "🟠", label: "ออฟไลน์", color: "#b45309" },
   [ONLINE_STATUS.UNVERIFIED]: { icon: "🟠", label: "ยังไม่ยืนยันอีเมล", color: "#b45309" },
   [ONLINE_STATUS.ACTIVE]: { icon: "🟢", label: "ออนไลน์", color: T.green },
-  [ONLINE_STATUS.REVOKED]: { icon: "🔒", label: "ย้ายไปอุปกรณ์อื่นแล้ว", color: T.accent },
+  [ONLINE_STATUS.NEEDS_DEVICE]: { icon: "🟠", label: "ต้องลงทะเบียนอุปกรณ์", color: "#b45309" },
+  [ONLINE_STATUS.DEVICE_LIMIT]: { icon: "🟠", label: "ครบจำนวนอุปกรณ์แล้ว", color: "#b45309" },
+  [ONLINE_STATUS.DEVICE_REVOKED]: { icon: "🔒", label: "อุปกรณ์นี้ถูกยกเลิกสิทธิ์", color: T.accent },
+  [ONLINE_STATUS.DEVICE_UNAUTHORIZED]: { icon: "🔒", label: "อุปกรณ์นี้ยังไม่ได้รับอนุญาต", color: T.accent },
+  [ONLINE_STATUS.MISMATCH]: { icon: "🔒", label: "คนละบัญชีกับที่เชื่อมไว้", color: T.accent },
   [ONLINE_STATUS.ERROR]: { icon: "🔴", label: "เกิดข้อผิดพลาด", color: T.accent },
 };
-// Pure function — the ONE place that decides which of the 6 statuses above applies. No component keeps its
-// own ad-hoc isConnected/isVerified/etc. booleans; every display funnels through this.
-function deriveOnlineStatus({ available, authUser, isOffline, workspace, deviceId, cloudError }) {
-  if (!available || !authUser) return ONLINE_STATUS.NOT_CONNECTED;
-  if (!authUser.emailVerified) return ONLINE_STATUS.UNVERIFIED;
-  if (cloudError) return ONLINE_STATUS.ERROR;
-  if (isOffline) return ONLINE_STATUS.OFFLINE;
-  if (!workspace) return ONLINE_STATUS.NOT_CONNECTED; // resolving, or not created yet
-  if (workspace.activeDeviceId && deviceId && workspace.activeDeviceId !== deviceId) return ONLINE_STATUS.REVOKED;
-  return ONLINE_STATUS.ACTIVE;
+// Pure function — the ONE place that decides which status applies (both the Settings row and the sheet use it).
+function deriveOnlineStatus({ available, user, device, isOffline }) {
+  if (!available || !user) return ONLINE_STATUS.NOT_CONNECTED;
+  if (!user.emailVerified) return ONLINE_STATUS.UNVERIFIED;
+  switch (device && device.status) {
+    case "authorized": return ONLINE_STATUS.ACTIVE;
+    case "needs_enrollment": case "enrolling": case "reauth_required": return ONLINE_STATUS.NEEDS_DEVICE;
+    case "limit_reached": return ONLINE_STATUS.DEVICE_LIMIT;
+    case "revoked": return ONLINE_STATUS.DEVICE_REVOKED;
+    case "unauthorized": case "migration_required": return ONLINE_STATUS.DEVICE_UNAUTHORIZED;
+    case "account_mismatch": return ONLINE_STATUS.MISMATCH;
+    case "offline": return ONLINE_STATUS.OFFLINE;
+    case "unavailable": return isOffline ? ONLINE_STATUS.OFFLINE : ONLINE_STATUS.ERROR;
+    default: return isOffline ? ONLINE_STATUS.OFFLINE : ONLINE_STATUS.CHECKING;
+  }
 }
+const ONLINE_STATUS_LABEL_KEY = {
+  [ONLINE_STATUS.NOT_CONNECTED]: "online.status.notConnected",
+  [ONLINE_STATUS.CHECKING]: "online.auth.checking",
+  [ONLINE_STATUS.OFFLINE]: "online.status.offline",
+  [ONLINE_STATUS.UNVERIFIED]: "online.status.unverified",
+  [ONLINE_STATUS.ACTIVE]: "online.status.online",
+  [ONLINE_STATUS.NEEDS_DEVICE]: "online.status.needsDevice",
+  [ONLINE_STATUS.DEVICE_LIMIT]: "online.status.deviceLimit",
+  [ONLINE_STATUS.DEVICE_REVOKED]: "online.status.deviceRevoked",
+  [ONLINE_STATUS.DEVICE_UNAUTHORIZED]: "online.status.deviceUnauthorized",
+  [ONLINE_STATUS.MISMATCH]: "online.status.mismatch",
+  [ONLINE_STATUS.ERROR]: "online.status.error",
+};
 // Firebase/Auth/Cloud error codes -> localized display copy. The error code remains the sole input to this
 // presentation helper; Auth, Workspace, device-authority and Cloud state-machine behavior stay untouched.
 // Unknown errors deliberately use a localized generic message rather than leaking SDK copy into the UI.
@@ -15738,6 +15769,30 @@ function cloudErrorMessage(e, tr) {
     TOO_MANY_OPEN_SESSIONS: "online.error.tooManyOpenSessions",
     unauthenticated: "online.error.unauthenticated",
     "functions/unavailable": "online.error.serverUnavailable",
+    // v1.15.0 (Phase 5A) — Commercial identity / device contract codes (IdentityBridgeError.code / API error.code).
+    DEVICE_LIMIT_REACHED: "online.error.deviceLimit",
+    "device-revoked": "online.error.deviceRevoked",
+    "device-authorization-required": "online.error.deviceAuth",
+    "device-not-authorized": "online.error.deviceAuth",
+    "device-credential-invalid": "online.error.deviceAuth",
+    "device-already-revoked": "online.error.deviceRevoked",
+    "device-enrollment-required": "online.error.deviceEnrollmentRequired",
+    "device-policy-migration-required": "online.error.deviceMigration",
+    "device-policy-upgrade-required": "online.error.deviceMigration",
+    "device-credential-unavailable": "online.error.deviceCredential",
+    "recent-authentication-required": "online.error.recentAuth",
+    "reauthorization-confirmation-required": "online.error.generic",
+    "device-not-found": "online.error.deviceNotFound",
+    "device-not-revoked": "online.error.generic",
+    "email-not-verified": "online.error.emailNotVerified",
+    "email-verification-required": "online.error.emailNotVerified",
+    "account-mismatch": "online.error.accountMismatch",
+    "environment-mismatch": "online.error.environmentMismatch",
+    "contract-invalid": "online.error.contractInvalid",
+    "device-contract-invalid": "online.error.contractInvalid",
+    offline: "online.error.network",
+    "verification-unavailable": "online.error.serverUnavailable",
+    "session-unavailable": "online.error.unauthenticated",
   };
   if (tr && code && MAP[code]) return tr(MAP[code]);
   return tr ? tr("online.error.generic") : ((e && e.message) || "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
@@ -15762,27 +15817,8 @@ function firestoreTsToDate(ts) {
 // inside BadQOnlineSheet's own deeper Auth/Workspace UI) or any Unified Login business logic — this is a
 // pure presentation-layer addition, reusing the pre-existing (previously unwired) online.status.* catalog
 // keys, byte-identical to ONLINE_STATUS_META's own Thai labels above.
-const ONLINE_STATUS_LABEL_KEY = {
-  [ONLINE_STATUS.NOT_CONNECTED]: "online.status.notConnected",
-  [ONLINE_STATUS.OFFLINE]: "online.status.offline",
-  [ONLINE_STATUS.UNVERIFIED]: "online.status.unverified",
-  [ONLINE_STATUS.ACTIVE]: "online.status.online",
-  [ONLINE_STATUS.REVOKED]: "online.status.moved",
-  [ONLINE_STATUS.ERROR]: "online.status.error",
-};
-// Both Firebase clients initialize asynchronously. Core Cloud remains the v1.14.2 default app; the
-// Commercial bridge is a separate named app and can never supply identity to Core Workspace calls.
-function useBadQCloudAdapter() {
-  const readAdapter = () => (typeof window !== "undefined" ? window.BadQCloud : null);
-  const [adapter, setAdapter] = useState(readAdapter);
-  useEffect(() => {
-    const refresh = () => setAdapter(readAdapter());
-    window.addEventListener("badq:cloud-ready", refresh);
-    refresh();
-    return () => window.removeEventListener("badq:cloud-ready", refresh);
-  }, []);
-  return adapter;
-}
+// The Commercial bridge initializes asynchronously (separate named Firebase app). The legacy BadQCloud adapter is no
+// longer read by any user-facing component.
 function useBadQCommercialAdapter() {
   const readAdapter = () => (typeof window !== "undefined" ? window.BadQCommercialBridge : null);
   const [adapter, setAdapter] = useState(readAdapter);
@@ -15794,41 +15830,53 @@ function useBadQCommercialAdapter() {
   }, []);
   return adapter;
 }
-function BadQOnlineNavRow({ deviceId, onOpen, tr }) {
-  const cloud = useBadQCloudAdapter();
-  const available = !!(cloud && cloud.available);
-  const [authUser, setAuthUser] = useState(() => (available && cloud.getCurrentOwner ? cloud.getCurrentOwner() : null));
-  const [workspace, setWorkspace] = useState(null);
+// Plain snapshot of the Commercial Firebase user (never the mutable SDK object, never a token).
+function snapshotOwner(user) {
+  return user && typeof user.uid === "string" ? { uid: user.uid, email: typeof user.email === "string" ? user.email : "", emailVerified: user.emailVerified === true } : null;
+}
+// ONE subscription to the canonical Owner: Commercial auth user + server-confirmed device authorization state.
+function useCommercialOwner(commercial) {
+  const available = !!(commercial && commercial.available);
+  const [user, setUser] = useState(() => (available && commercial.getCurrentOwner ? snapshotOwner(commercial.getCurrentOwner()) : null));
+  const [device, setDevice] = useState(() => (available && commercial.getDeviceState ? commercial.getDeviceState() : { status: "signed_out" }));
   const [isOffline, setIsOffline] = useState(typeof navigator !== "undefined" ? !navigator.onLine : false);
-
   useEffect(() => {
-    if (!available || !cloud.onAuthChange) return;
-    const unsub = cloud.onAuthChange((u) => { setAuthUser(u || null); setWorkspace(null); });
+    if (!available || !commercial.onAuthChange) return;
+    const unsub = commercial.onAuthChange((u) => setUser(snapshotOwner(u)));
     return () => { try { unsub && unsub(); } catch (e) {} };
-  }, [available]);
+  }, [available, commercial]);
+  useEffect(() => {
+    if (!available || !commercial.onDeviceStateChange) return;
+    const unsub = commercial.onDeviceStateChange((value) => setDevice(value || { status: "signed_out" }));
+    return () => { try { unsub && unsub(); } catch (e) {} };
+  }, [available, commercial]);
   useEffect(() => {
     const goOnline = () => setIsOffline(false), goOffline = () => setIsOffline(true);
     window.addEventListener("online", goOnline); window.addEventListener("offline", goOffline);
     return () => { window.removeEventListener("online", goOnline); window.removeEventListener("offline", goOffline); };
   }, []);
-  useEffect(() => {
-    if (!available || !authUser || !authUser.emailVerified || !cloud.getOrCreateWorkspace || !cloud.subscribeWorkspace) return;
-    let cancelled = false, unsub = null;
-    (async () => {
-      try {
-        const workspaceId = await cloud.getOrCreateWorkspace(authUser.uid);
-        if (cancelled) return;
-        unsub = cloud.subscribeWorkspace(workspaceId, (ws) => { if (!cancelled) setWorkspace(ws); });
-      } catch (e) {}
-    })();
-    return () => { cancelled = true; try { unsub && unsub(); } catch (e) {} };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [available, authUser && authUser.uid, authUser && authUser.emailVerified]);
-
-  const status = deriveOnlineStatus({ available, authUser, isOffline, workspace, deviceId, cloudError: null });
+  const refreshUser = () => { if (available && commercial.getCurrentOwner) setUser(snapshotOwner(commercial.getCurrentOwner())); };
+  return { available, user, device, isOffline, refreshUser };
+}
+// Friendly device name for the registration confirmation (no identifiers, no secrets).
+function describeThisDevice(t) {
+  try {
+    const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
+    const os = /iPad/.test(ua) ? "iPad" : /iPhone/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android" :
+      /Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "";
+    const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "";
+    const pwa = typeof window !== "undefined" && ((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true);
+    const label = [os, browser, pwa ? "PWA" : ""].filter(Boolean).join(" · ");
+    return (label || t("online.device.defaultName")).slice(0, 80);
+  } catch (e) { return t("online.device.defaultName"); }
+}
+function BadQOnlineNavRow({ onOpen, tr }) {
+  const commercial = useBadQCommercialAdapter();
+  const { available, user, device, isOffline } = useCommercialOwner(commercial);
+  const status = deriveOnlineStatus({ available, user, device, isOffline });
   const meta = ONLINE_STATUS_META[status];
   return (
-    <button onClick={onOpen} style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, padding: "11px 12px", borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, marginBottom: 8, cursor: "pointer" }}>
+    <button data-testid="online-nav-row" data-status={status} onClick={onOpen} style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, padding: "11px 12px", borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, marginBottom: 8, cursor: "pointer" }}>
       <span style={{ fontSize: 15 }}>{meta.icon}</span>
       <span style={{ fontSize: 13, fontWeight: 700, color: meta.color }}>{tr ? tr(ONLINE_STATUS_LABEL_KEY[status]) : meta.label}</span>
       <ChevronRight size={15} color={T.muted} style={{ marginLeft: "auto" }} />
@@ -15945,17 +15993,16 @@ function PlayerSyncPanel({ commercial, localGroupId, players, t }) {
     </div>
   );
 }
-// Full "☁️ BadQ Online" sheet (spec sections B-L). Owner Auth (register/verify/sign-in/reset/logout) +
-// Workspace resolution (create-once, idempotent) + Single Active Device (auto-register when none exists,
-// explicit-confirm takeover when one already exists, live revoked-state detection via a real-time Firestore
-// listener). Does not read or write ANY BadQ business data — see the file-level comment block above.
-function BadQOnlineSheet({ deviceId, groupDefaults, sessionHistory, localGroups, currentLocalGroupId, currentGroupName, players, t, fmtDateTime, onClose }) {
-  const cloud = useBadQCloudAdapter();
+// Full "☁️ BadQ Online" sheet. v1.15.0 (Phase 5A): ONE Owner account = the Commercial Firebase account (same email /
+// password / UID / verification / password-reset lifecycle as the website). Sign-up / sign-in / verification / reset /
+// sign-out all go through window.BadQCommercialBridge. Cloud capability is enabled only after the server confirms THIS
+// device is one of the Owner's (max 2) authorized devices — registration needs an explicit Owner confirmation, and the
+// device key never touches bg-v11, Backup, Restore, diagnostics or the UI (see commercial-sync.js). The legacy
+// BadQCloud Workspace / Single-Active-Device / initial-cloud-upload UI is no longer reachable from here (legacy code
+// stays dormant on disk, untouched). Local Core data is never read, written, or erased by anything below.
+function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLocalGroupId, currentGroupName, players, t, fmtDateTime, onClose }) {
   const commercial = useBadQCommercialAdapter();
-  const available = !!(cloud && cloud.available);
-  const commercialAvailable = !!(commercial && commercial.available);
-  const [authUser, setAuthUser] = useState(() => (available && cloud.getCurrentOwner ? cloud.getCurrentOwner() : null));
-  const [commercialUser, setCommercialUser] = useState(() => (commercialAvailable && commercial.getCurrentOwner ? commercial.getCurrentOwner() : null));
+  const { available: commercialAvailable, user, device, isOffline, refreshUser } = useCommercialOwner(commercial);
   const [authMode, setAuthMode] = useState("signin"); // "signin" | "register"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15963,10 +16010,13 @@ function BadQOnlineSheet({ deviceId, groupDefaults, sessionHistory, localGroups,
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [notice, setNotice] = useState("");
-  const [workspace, setWorkspace] = useState(null); // live workspace doc ({id, primaryOwnerUid, activeDeviceId, ...}), or null while resolving/absent
-  const [cloudError, setCloudError] = useState(null);
-  const [isOffline, setIsOffline] = useState(typeof navigator !== "undefined" ? !navigator.onLine : false);
-  const [takeoverDismissed, setTakeoverDismissed] = useState(false); // collapses the big confirm dialog into a small reopenable banner
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [deviceLabel, setDeviceLabel] = useState("");
+  const [reauthPassword, setReauthPassword] = useState("");
+  const [deviceErr, setDeviceErr] = useState("");
+  const [revokedConfirm, setRevokedConfirm] = useState(false);
+  const deviceAuthorized = !!(user && user.emailVerified && device && device.status === "authorized");
   const phase2GroupLinking = !!(commercialAvailable && commercial.listBadmintonGroups && commercial.linkBadmintonGroup &&
     commercial.createAndLinkBadmintonGroup && commercial.validateBadmintonGroupLink && commercial.unlinkBadmintonGroup);
   const localGroupOptions = (localGroups && Array.isArray(localGroups.records) ? localGroups.records : [])
@@ -15982,53 +16032,6 @@ function BadQOnlineSheet({ deviceId, groupDefaults, sessionHistory, localGroups,
   const [selectedCloudGroupId, setSelectedCloudGroupId] = useState("");
   const [phase2Busy, setPhase2Busy] = useState(false);
   const [phase2Error, setPhase2Error] = useState("");
-  // Distinguishes the two device-conflict scenarios that deriveOnlineStatus's single REVOKED bucket does NOT
-  // separate (they share one status value on purpose -- see ONLINE_STATUS's own comment -- but need DIFFERENT
-  // banner copy per spec sections H and J): a device that has NEVER been this Workspace's active device
-  // meeting an already-claimed Workspace for the first time (section H -- "takeover offer" copy) vs. a
-  // device that WAS this Workspace's active device and has since been superseded by another device (section
-  // J -- "revoked" copy). Sticky for this mount once observed true; never reset back to false here.
-  const [everActiveHere, setEverActiveHere] = useState(false);
-  useEffect(() => {
-    if (workspace && deviceId && workspace.activeDeviceId === deviceId) setEverActiveHere(true);
-  }, [workspace && workspace.activeDeviceId, deviceId]);
-
-  // v1.12.9 — this device's own cached copy of the one-time "activeSessionId" capability that
-  // claimActiveDevice's Cloud Function hands back ONLY to whichever device just called it (see the file-
-  // header comment above and firebase-sync.js's). Never re-derived from any Firestore read -- Firestore
-  // Rules make workspaces/{id}/private/authority unreadable to every client on purpose, so a revoked device
-  // can never discover the current value; it can only ever know the value it was PERSONALLY handed the last
-  // time IT successfully claimed/took over. Persisted under its own storage key, isolated from deviceId and
-  // from all BadQ business data, exactly like deviceId itself (survives reload, not included in backups).
-  const [activeSessionId, setActiveSessionIdState] = useState(null);
-  useEffect(() => {
-    if (!deviceId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await window.storage.get("bg-v11-active-session-" + deviceId);
-        const raw = r && r.value != null ? r.value : null;
-        if (!cancelled) setActiveSessionIdState(raw || null);
-      } catch (e) {}
-    })();
-    return () => { cancelled = true; };
-  }, [deviceId]);
-  const persistSessionId = async (sid) => {
-    setActiveSessionIdState(sid || null);
-    if (!deviceId) return;
-    try { if (sid) await window.storage.set("bg-v11-active-session-" + deviceId, sid); } catch (e) {}
-  };
-
-  useEffect(() => {
-    if (!available || !cloud.onAuthChange) return;
-    const unsub = cloud.onAuthChange((u) => { setAuthUser(u || null); setWorkspace(null); setCloudError(null); setTakeoverDismissed(false); });
-    return () => { try { unsub && unsub(); } catch (e) {} };
-  }, [available]);
-  useEffect(() => {
-    if (!commercialAvailable || !commercial.onAuthChange) return;
-    const unsub = commercial.onAuthChange((u) => setCommercialUser(u || null));
-    return () => { try { unsub && unsub(); } catch (e) {} };
-  }, [commercialAvailable]);
   useEffect(() => {
     if (!phase2GroupLinking || !commercial.onBadmintonGroupLinkChange) return;
     const unsub = commercial.onBadmintonGroupLinkChange((value) => setGroupLinkState(value || { records: [] }));
@@ -16043,7 +16046,7 @@ function BadQOnlineSheet({ deviceId, groupDefaults, sessionHistory, localGroups,
     catch (e) { setPhase2Error(t("online.groupLink.actionError")); }
   }, [phase2GroupLinking, localGroupOptions.map((record) => `${record.localGroupId}:${record.name}`).join("|")]);
   useEffect(() => {
-    if (!phase2GroupLinking || !commercialUser || !commercialUser.emailVerified) return;
+    if (!phase2GroupLinking || !deviceAuthorized) return;
     let cancelled = false;
     setPhase2Busy(true); setPhase2Error("");
     commercial.listBadmintonGroups()
@@ -16057,155 +16060,19 @@ function BadQOnlineSheet({ deviceId, groupDefaults, sessionHistory, localGroups,
       .catch(() => { if (!cancelled) setPhase2Error(t("online.groupLink.loadError")); })
       .finally(() => { if (!cancelled) setPhase2Busy(false); });
     return () => { cancelled = true; };
-  }, [phase2GroupLinking, commercialUser && commercialUser.uid, commercialUser && commercialUser.emailVerified]);
+  }, [phase2GroupLinking, user && user.uid, deviceAuthorized]);
 
   const selectedGroupLink = (groupLinkState.records || []).find((record) =>
     record && record.localGroupId === selectedLocalGroupId) || null;
   useEffect(() => {
     if (!phase2GroupLinking || !selectedGroupLink || selectedGroupLink.linkStatus !== "linked" ||
-        selectedGroupLink.validationStatus === "validated" || !commercialUser || !commercialUser.emailVerified) return;
+        selectedGroupLink.validationStatus === "validated" || !deviceAuthorized) return;
     let cancelled = false;
     commercial.validateBadmintonGroupLink(selectedGroupLink.localGroupId)
       .catch(() => { if (!cancelled) setPhase2Error(t("online.groupLink.actionError")); });
     return () => { cancelled = true; };
   }, [phase2GroupLinking, selectedGroupLink && selectedGroupLink.localGroupId,
-    selectedGroupLink && selectedGroupLink.validationStatus, commercialUser && commercialUser.uid]);
-  useEffect(() => {
-    const goOnline = () => setIsOffline(false), goOffline = () => setIsOffline(true);
-    window.addEventListener("online", goOnline); window.addEventListener("offline", goOffline);
-    return () => { window.removeEventListener("online", goOnline); window.removeEventListener("offline", goOffline); };
-  }, []);
-
-  // Resolve (create-once, idempotent) Workspace + subscribe to it in real time — ONLY once signed in AND
-  // verified (section D's required order: verify -> resolve workspace -> resolve device -> evaluate
-  // authority -> enable Online). An unverified account never reaches this at all.
-  useEffect(() => {
-    if (!available || !authUser || !authUser.emailVerified || !cloud.getOrCreateWorkspace || !cloud.subscribeWorkspace) return;
-    let cancelled = false, unsub = null;
-    (async () => {
-      try {
-        const workspaceId = await cloud.getOrCreateWorkspace(authUser.uid);
-        if (cancelled) return;
-        unsub = cloud.subscribeWorkspace(
-          workspaceId,
-          (ws) => { if (!cancelled) { setWorkspace(ws); setCloudError(null); } },
-          (e) => { if (!cancelled) setCloudError(e); }
-        );
-      } catch (e) { if (!cancelled) setCloudError(e); }
-    })();
-    return () => { cancelled = true; try { unsub && unsub(); } catch (e) {} };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [available, authUser && authUser.uid, authUser && authUser.emailVerified]);
-
-  // Auto-claim THIS device as Active the moment a Workspace with NO active device yet is seen (section H:
-  // "the current verified Owner may register the current device as Active"). Only ever fires when
-  // activeDeviceId is genuinely absent — a Workspace that already names a DIFFERENT device never goes
-  // through this path, only through the explicit takeover confirmation below.
-  useEffect(() => {
-    if (!workspace || !deviceId || !cloud || !cloud.claimActiveDevice) return;
-    if (workspace.activeDeviceId) return;
-    // v1.12.11: also present this device's own cached activeSessionId (if any). This effect's own guard
-    // above only ever fires when workspace.activeDeviceId is genuinely absent (Case A server-side, which
-    // needs no proof), so activeSessionId is normally null here anyway -- passed through for forward
-    // consistency with claimActiveDevice's new same-device-reclaim contract, never to change this effect's
-    // own trigger condition or behavior.
-    cloud.claimActiveDevice(workspace.id, deviceId, APP_VERSION, { isTakeover: false, currentActiveSessionId: activeSessionId })
-      .then((res) => { if (res && res.activeSessionId) persistSessionId(res.activeSessionId); })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspace && workspace.id, workspace && workspace.activeDeviceId, deviceId]);
-
-  // v1.12.9 — the ONE concrete "protected Cloud write" in this phase (spec's own acceptance tests require
-  // one to demonstrate real enforcement, not just a client-side status label): once this device believes
-  // it's active AND holds a cached session capability, it asks the trusted pingDeviceHeartbeat Cloud
-  // Function to record a heartbeat. If a takeover happened elsewhere and this device's cached capability is
-  // now stale, the Function rejects it with STALE_SESSION regardless of what this device's own UI currently
-  // shows — that rejection is surfaced via cloudError exactly like any other Cloud error would be.
-  useEffect(() => {
-    if (!cloud || !cloud.pingDeviceHeartbeat || !workspace || !deviceId || !activeSessionId) return;
-    if (workspace.activeDeviceId !== deviceId) return;
-    let cancelled = false;
-    cloud.pingDeviceHeartbeat(deviceId, activeSessionId, APP_VERSION)
-      .then(() => { if (!cancelled) setCloudError(null); })
-      .catch((e) => { if (!cancelled) setCloudError(e); });
-    return () => { cancelled = true; };
-  }, [workspace && workspace.id, workspace && workspace.activeDeviceId, deviceId, activeSessionId]);
-
-  const status = deriveOnlineStatus({ available, authUser, isOffline, workspace, deviceId, cloudError });
-  const meta = ONLINE_STATUS_META[status];
-  const hasConflict = !!(workspace && workspace.activeDeviceId && deviceId && workspace.activeDeviceId !== deviceId);
-
-  // v1.12.12 (P2.2 — CRITICAL: Initial Cloud Data Safety) — read-only reconnaissance, ONLY once this device
-  // is genuinely the Active Device (never for a revoked/conflicted device, which has no business offering to
-  // seed anything). Tells this UI whether Cloud already has Club data (in which case NO upload is ever
-  // offered here — see the safe "already has data" state below, spec: "never automatically overwrite it with
-  // local data merely because this device became Active") or is genuinely empty (in which case, and ONLY
-  // then, an explicit Owner-confirmed initial upload becomes possible).
-  const [cloudInitState, setCloudInitState] = useState(null);
-  useEffect(() => {
-    if (!cloud || !cloud.checkCloudInitState || !workspace || !deviceId || workspace.activeDeviceId !== deviceId) { setCloudInitState(null); return; }
-    let cancelled = false;
-    cloud.checkCloudInitState().then((res) => { if (!cancelled) setCloudInitState(res); }).catch(() => { if (!cancelled) setCloudInitState(null); });
-    return () => { cancelled = true; };
-  }, [workspace && workspace.id, workspace && workspace.activeDeviceId, deviceId]);
-
-  // v1.12.29 — UX-2 (see project doc badq-v11228-review-p22-followup.md): once Cloud genuinely has a Club,
-  // show its real name(s) instead of a flat "already has data" line with no detail. This is a plain,
-  // read-only Firestore query against workspaces/{id}/clubs (cloud.listClubs, firebase-sync.js) — the SAME
-  // collection, and the SAME pre-existing owner-only Rule, that checkCloudInitState's own Function already
-  // relies on being readable. No Cloud Function or Firestore Rules change was needed or made for this.
-  const [cloudClubs, setCloudClubs] = useState(null); // null = not fetched yet; [] = fetched, empty; array = {name} entries
-  const [cloudClubsLoading, setCloudClubsLoading] = useState(false);
-  const [cloudClubsErr, setCloudClubsErr] = useState("");
-  useEffect(() => {
-    if (!cloud || !cloud.listClubs || !workspace || !cloudInitState || cloudInitState.clubsInitialized !== true) {
-      setCloudClubs(null); setCloudClubsErr(""); setCloudClubsLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setCloudClubsLoading(true); setCloudClubsErr("");
-    cloud.listClubs(workspace.id)
-      .then((clubs) => { if (!cancelled) setCloudClubs(Array.isArray(clubs) ? clubs : []); })
-      .catch((e) => { if (!cancelled) { setCloudClubs(null); setCloudClubsErr((e && e.code) || "unknown"); } })
-      .finally(() => { if (!cancelled) setCloudClubsLoading(false); });
-    return () => { cancelled = true; };
-  }, [workspace && workspace.id, cloudInitState && cloudInitState.clubsInitialized]);
-
-  const [initConfirmOpen, setInitConfirmOpen] = useState(false);
-  const [initBusy, setInitBusy] = useState(false);
-  const [initErr, setInitErr] = useState("");
-  const [initDone, setInitDone] = useState(false);
-  // Summary shown to the Owner BEFORE they confirm (spec: "number of clubs/groups, number of current
-  // sessions, most recent local update timestamp, device/browser context where practical") — built entirely
-  // from data THIS device already has locally; never fetched from anywhere else.
-  const localGroupCount = localGroupNames.length;
-  const localSessionCount = (sessionHistory || []).length;
-  const localMostRecentAt = (sessionHistory || []).reduce((max, h) => Math.max(max, Number(h && h.endedAt) || 0), 0);
-  // v1.12.29 — UX-1 (see project doc badq-v11228-review-p22-followup.md): the Owner can now pick WHICH local
-  // group seeds the Cloud Club, instead of it always silently being whichever group was created earliest on
-  // this device. `defaultGroupName` prefers the group the Owner is CURRENTLY using (`currentGroupName`, i.e.
-  // session.name) when it's one of the saved local groups — the group they most likely mean — else falls back
-  // to the first saved group (the old, only, behavior), else to the pre-existing "ก๊วนของฉัน" placeholder when
-  // there are no saved local groups at all (that last fallback is byte-for-byte unchanged from before this
-  // patch). `selectedGroupName` is null until the Owner explicitly touches the picker; `cloudInitGroupName` is
-  // the ONE value actually used everywhere below — the upload payload, the confirmation dialog, and the
-  // success message all read this same value, so none of them can ever disagree about which name is being
-  // uploaded (same single-source-of-truth discipline the v1.12.28 BUG-1 fix established, now extended to a
-  // value the Owner can also change).
-  const defaultGroupName = (currentGroupName && localGroupNames.includes(currentGroupName)) ? currentGroupName : (localGroupNames[0] || "ก๊วนของฉัน");
-  const [selectedGroupName, setSelectedGroupName] = useState(null);
-  const cloudInitGroupName = (selectedGroupName && localGroupNames.includes(selectedGroupName)) ? selectedGroupName : defaultGroupName;
-  const otherLocalGroupCount = Math.max(0, localGroupCount - (localGroupNames.includes(cloudInitGroupName) ? 1 : 0));
-  const doConfirmInitialCloudData = async () => {
-    setInitBusy(true); setInitErr("");
-    try {
-      await cloud.upsertClub(deviceId, activeSessionId, { club: { name: cloudInitGroupName }, confirmedInitialData: true });
-      setInitConfirmOpen(false); setInitDone(true);
-      setCloudInitState({ clubsInitialized: true });
-    } catch (e) { setInitErr(cloudErrorMessage(e, t)); }
-    finally { setInitBusy(false); }
-  };
-
+    selectedGroupLink && selectedGroupLink.validationStatus, user && user.uid, deviceAuthorized]);
   const refreshPhase2Groups = async () => {
     const groups = await commercial.listBadmintonGroups();
     const safe = Array.isArray(groups) ? groups : [];
@@ -16251,34 +16118,36 @@ function BadQOnlineSheet({ deviceId, groupDefaults, sessionHistory, localGroups,
     selectedGroupLink?.validationStatus === "account_mismatch" ? "online.groupLink.accountMismatch" :
     "online.groupLink.stale";
 
+  const needsRecentAuth = !!(device && device.status === "reauth_required");
+  const deviceError = (e) => (e && e.code ? cloudErrorMessage(e, t) : t("online.error.generic"));
   const doRegister = async () => {
     if (password !== confirmPassword) { setErr(t("online.auth.passwordMismatch")); return; }
     if (password.length < 6) { setErr(t("online.auth.passwordMin")); return; }
     setBusy(true); setErr(""); setNotice("");
     try {
-      await cloud.registerOwner(email.trim(), password);
-      if (cloud.sendVerificationEmail) await cloud.sendVerificationEmail().catch(() => {});
+      await commercial.registerOwner(email.trim(), password);
+      if (commercial.sendVerificationEmail) await Promise.resolve(commercial.sendVerificationEmail()).catch(() => {});
       setPassword(""); setConfirmPassword("");
     } catch (e) { setErr(cloudErrorMessage(e, t)); }
     finally { setBusy(false); }
   };
   const doSignIn = async () => {
     setBusy(true); setErr(""); setNotice("");
-    try { await cloud.signInOwner(email.trim(), password); setPassword(""); }
+    try { await commercial.signInOwner(email.trim(), password); setPassword(""); }
     catch (e) { setErr(cloudErrorMessage(e, t)); }
     finally { setBusy(false); }
   };
   const doResendVerification = async () => {
     setBusy(true); setErr(""); setNotice("");
-    try { await cloud.sendVerificationEmail(); setNotice(t("online.auth.verificationSent")); }
+    try { await commercial.sendVerificationEmail(); setNotice(t("online.auth.verificationSent")); }
     catch (e) { setErr(cloudErrorMessage(e, t)); }
     finally { setBusy(false); }
   };
   const doRecheckVerification = async () => {
     setBusy(true); setErr(""); setNotice("");
     try {
-      const u = await cloud.reloadCurrentUser();
-      setAuthUser(u || null);
+      const u = await commercial.reloadCurrentUser();
+      refreshUser();
       if (!u || !u.emailVerified) setErr(t("online.auth.verificationNotFound"));
     } catch (e) { setErr(cloudErrorMessage(e, t)); }
     finally { setBusy(false); }
@@ -16286,94 +16155,187 @@ function BadQOnlineSheet({ deviceId, groupDefaults, sessionHistory, localGroups,
   const doPasswordReset = async () => {
     if (!email.trim()) { setErr(t("online.auth.emailRequired")); return; }
     setBusy(true); setErr(""); setNotice("");
-    try { await cloud.sendPasswordReset(email.trim()); setNotice(t("online.auth.resetSent")); }
+    try { await commercial.sendPasswordReset(email.trim()); setNotice(t("online.auth.resetSent")); }
     catch (e) { setErr(cloudErrorMessage(e, t)); }
     finally { setBusy(false); }
   };
   const doLogout = async () => {
-    // Logout is Auth-only (section L): sign out + let Online UI return to disconnected. Never touches BadQ
-    // local data, never touches deviceId, never releases activeDeviceId — Active Device authority is a
-    // separate concept from this browser's login session and stays exactly as it was.
+    // Auth-only: signs out of the Commercial account. Local BadQ data, the device credential and every cloud binding stay
+    // exactly as they were (a different Owner signing in later stays fenced by account-mismatch).
     setBusy(true); setErr("");
-    try { await cloud.signOutOwner(); setWorkspace(null); }
+    try { await commercial.signOutOwner(); setRegisterOpen(false); setManageOpen(false); }
     catch (e) { setErr(cloudErrorMessage(e, t)); }
     finally { setBusy(false); }
   };
-  const doTakeover = async () => {
-    setBusy(true); setErr("");
+  const openRegister = () => { setDeviceErr(""); setReauthPassword(""); setDeviceLabel(describeThisDevice(t)); setRegisterOpen(true); };
+  const doEnroll = async () => {
+    setBusy(true); setDeviceErr("");
     try {
-      // v1.12.11: currentActiveSessionId is meaningless for a genuine different-device takeover (Case C
-      // server-side is gated on confirmTakeover alone, never on session proof -- see functions/index.js) but
-      // is passed through anyway for call-shape consistency with the auto-claim effect above; the Cloud
-      // Function ignores it on this path.
-      const res = await cloud.claimActiveDevice(workspace.id, deviceId, APP_VERSION, { isTakeover: true, currentActiveSessionId: activeSessionId });
-      if (res && res.activeSessionId) await persistSessionId(res.activeSessionId);
-      setTakeoverDismissed(false);
-    } catch (e) { setErr(cloudErrorMessage(e, t)); }
+      if (needsRecentAuth) await commercial.reauthenticateOwner(reauthPassword);
+      setReauthPassword("");
+      await commercial.enrollThisDevice({ confirm: true, label: deviceLabel.trim() || describeThisDevice(t) });
+      setRegisterOpen(false);
+    } catch (e) {
+      // States with their own card (limit / migration / revoked / unauthorized) close the dialog; recoverable ones (recent sign-in, network) keep it open.
+      if (e && ["DEVICE_LIMIT_REACHED", "device-policy-migration-required", "device-revoked", "device-credential-invalid"].includes(e.code)) setRegisterOpen(false);
+      else setDeviceErr(deviceError(e));
+    }
+    finally { setBusy(false); }
+  };
+  const doReauthorizeThisDevice = async () => {
+    setBusy(true); setDeviceErr("");
+    try {
+      if (needsRecentAuth) { await commercial.reauthenticateOwner(reauthPassword); setReauthPassword(""); }
+      const list = await commercial.listOwnerDevices();
+      const mine = list.find((entry) => entry.isCurrent);
+      if (!mine) throw Object.assign(new Error("device-not-found"), { code: "device-not-found" });
+      await commercial.reauthorizeOwnerDevice(mine.ref, { confirm: true });
+      setRevokedConfirm(false);
+    } catch (e) { setDeviceErr(deviceError(e)); }
     finally { setBusy(false); }
   };
 
-  const activeSinceDate = workspace ? firestoreTsToDate(workspace.activeDeviceSince) : null;
+  const status = deriveOnlineStatus({ available: commercialAvailable, user, device, isOffline });
+  const meta = ONLINE_STATUS_META[status];
+  const max = (device && device.maxAuthorizedDevices) || 2;
+  const dStatus = device ? device.status : "signed_out";
+  const card = (bg, border) => ({ padding: 12, borderRadius: 11, background: bg, border: `1px solid ${border}`, marginBottom: 10 });
 
   return (
     <Overlay onClose={onClose}>
-      {/* v1.12.14 (BadQ Online Beta labeling): the feature is still in-development/future-facing — labeled
-          "(Beta)" on the sheet's own title (and the Settings top-level card, see SettingsTab) so users don't
-          mistake it for a fully-released production feature. Informational only — does not disable/change
-          any P2.1 login/auth/device/heartbeat/cloud-authority behavior below, per explicit instruction. */}
-      <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>☁️ BadQ Online (Beta)</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+      <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>{t("online.accountTitle")}</div>
+      <div data-testid="online-status" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
         <span style={{ fontSize: 13 }}>{meta.icon}</span>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: meta.color }}>{t(ONLINE_STATUS_LABEL_KEY[status])}</span>
       </div>
 
-      {/* NOT CONNECTED (section B) */}
-      {!authUser && (
+      {/* SIGNED OUT */}
+      {!user && (
         <div>
-          <div style={{ fontSize: 11.5, color: T.muted, marginBottom: 2, lineHeight: 1.6 }}>{t("online.intro")}</div>
+          <div style={{ fontSize: 11.5, color: T.muted, marginBottom: 2, lineHeight: 1.6 }}>{t("online.introOwner")}</div>
           <div style={{ fontSize: 10.5, color: T.muted, marginBottom: 14, lineHeight: 1.6, fontStyle: "italic" }}>{t("online.betaNotice")}</div>
-          {!available && (
-            <div style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, fontSize: 12.5, color: T.muted, lineHeight: 1.7, marginBottom: 10 }}>{t("online.firebaseUnavailable")}</div>
+          {!commercialAvailable && (
+            <div style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, fontSize: 12.5, color: T.muted, lineHeight: 1.7, marginBottom: 10 }}>{t("online.accountUnavailable")}</div>
           )}
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <button onClick={() => { setAuthMode("signin"); setErr(""); setNotice(""); }} style={{ flex: 1, padding: "8px 0", borderRadius: 9, border: `1px solid ${T.border}`, background: authMode === "signin" ? T.green : T.surface, color: authMode === "signin" ? "#fff" : T.text, fontSize: 12.5, fontWeight: 700 }}>{t("online.auth.signIn")}</button>
-            <button onClick={() => { setAuthMode("register"); setErr(""); setNotice(""); }} style={{ flex: 1, padding: "8px 0", borderRadius: 9, border: `1px solid ${T.border}`, background: authMode === "register" ? T.green : T.surface, color: authMode === "register" ? "#fff" : T.text, fontSize: 12.5, fontWeight: 700 }}>{t("online.auth.createOwner")}</button>
+            <button onClick={() => { setAuthMode("signin"); setErr(""); setNotice(""); }} style={{ flex: 1, padding: "8px 0", borderRadius: 9, border: `1px solid ${T.border}`, background: authMode === "signin" ? T.accent : T.surface, color: authMode === "signin" ? "#fff" : T.text, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{t("online.auth.signIn")}</button>
+            <button onClick={() => { setAuthMode("register"); setErr(""); setNotice(""); }} style={{ flex: 1, padding: "8px 0", borderRadius: 9, border: `1px solid ${T.border}`, background: authMode === "register" ? T.accent : T.surface, color: authMode === "register" ? "#fff" : T.text, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{t("online.auth.createOwner")}</button>
           </div>
-          <input type="email" placeholder={t("online.auth.email")} value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, fontSize: 13, marginBottom: 8 }} />
-          <input type="password" placeholder={t("online.auth.password")} value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, fontSize: 13, marginBottom: 8 }} />
+          <input type="email" data-testid="owner-email" placeholder={t("online.auth.email")} value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13, marginBottom: 8 }} />
+          <input type="password" data-testid="owner-password" placeholder={t("online.auth.password")} value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13, marginBottom: 8 }} />
           {authMode === "register" && (
-            <input type="password" placeholder={t("online.auth.confirmPassword")} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, fontSize: 13, marginBottom: 8 }} />
+            <input type="password" data-testid="owner-password-confirm" placeholder={t("online.auth.confirmPassword")} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13, marginBottom: 8 }} />
           )}
           {err && <div style={{ marginBottom: 8, fontSize: 12, color: T.accent }}>{err}</div>}
           {notice && <div style={{ marginBottom: 8, fontSize: 12, color: T.green }}>{notice}</div>}
-          <button disabled={busy || !available || !email || !password || (authMode === "register" && !confirmPassword)} onClick={authMode === "register" ? doRegister : doSignIn} style={{ width: "100%", padding: "10px 0", borderRadius: 9, border: "none", background: T.accent, color: "#fff", fontSize: 13, fontWeight: 800, opacity: busy || !available ? 0.6 : 1, marginBottom: 8 }}>{busy ? t("online.auth.working") : authMode === "register" ? t("online.auth.createOwner") : t("online.auth.signIn")}</button>
+          <button data-testid="owner-submit" disabled={busy || !commercialAvailable || !email || !password || (authMode === "register" && !confirmPassword)} onClick={authMode === "register" ? doRegister : doSignIn} style={{ ...btnPrimary, width: "100%", marginBottom: 8, opacity: busy ? 0.6 : 1 }}>{busy ? t("online.auth.working") : authMode === "register" ? t("online.auth.createOwner") : t("online.auth.signIn")}</button>
           {authMode === "signin" && (
-            <button disabled={busy || !available} onClick={doPasswordReset} style={{ width: "100%", padding: "8px 0", background: "none", border: "none", color: T.muted, fontSize: 12, fontWeight: 700, textDecoration: "underline" }}>{t("online.auth.forgotPassword")}</button>
+            <button data-testid="owner-reset" disabled={busy || !commercialAvailable} onClick={doPasswordReset} style={{ width: "100%", padding: "8px 0", background: "none", border: "none", color: T.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>{t("online.auth.forgotPassword")}</button>
           )}
         </div>
       )}
 
-      {/* AUTHENTICATED BUT NOT VERIFIED (section C) */}
-      {authUser && !authUser.emailVerified && (
+      {/* SIGNED IN, EMAIL NOT VERIFIED */}
+      {user && !user.emailVerified && (
         <div>
-          <div style={{ padding: 12, borderRadius: 11, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12.5, color: "#92400e", lineHeight: 1.7, marginBottom: 12 }}>{t("online.auth.verifyPrompt", { email: authUser.email })}</div>
-          <button disabled={busy} onClick={doResendVerification} style={{ width: "100%", padding: "10px 0", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{t("online.auth.resendVerification")}</button>
-          <button disabled={busy} onClick={doRecheckVerification} style={{ width: "100%", padding: "10px 0", borderRadius: 9, border: "none", background: T.accent, color: "#fff", fontSize: 13, fontWeight: 800, marginBottom: 8, opacity: busy ? 0.6 : 1 }}>{busy ? t("online.auth.checking") : t("online.auth.checkAgain")}</button>
-          <button disabled={busy} onClick={doLogout} style={btnSecondary}>{t("online.auth.signOut")}</button>
+          <div style={{ padding: 12, borderRadius: 11, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12.5, color: "#92400e", lineHeight: 1.7, marginBottom: 12 }}>{t("online.auth.verifyPrompt", { email: user.email })}</div>
+          <button data-testid="owner-resend" disabled={busy} onClick={doResendVerification} style={{ ...btnSecondary, width: "100%", marginBottom: 8 }}>{t("online.auth.resendVerification")}</button>
+          <button data-testid="owner-recheck" disabled={busy} onClick={doRecheckVerification} style={{ ...btnPrimary, width: "100%", marginBottom: 8 }}>{busy ? t("online.auth.checking") : t("online.auth.checkAgain")}</button>
+          {err && <div style={{ marginBottom: 8, fontSize: 12, color: T.accent }}>{err}</div>}
+          {notice && <div style={{ marginBottom: 8, fontSize: 12, color: T.green }}>{notice}</div>}
+          <button data-testid="owner-signout" disabled={busy} onClick={doLogout} style={btnSecondary}>{t("online.auth.signOut")}</button>
         </div>
       )}
 
-      {/* AUTHENTICATED + VERIFIED (sections F-L) */}
-      {((authUser && authUser.emailVerified) || (phase2GroupLinking && commercialUser && commercialUser.emailVerified)) && (
+      {/* VERIFIED OWNER */}
+      {user && user.emailVerified && (
         <div>
-          {authUser && authUser.emailVerified && (
-            <div style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, marginBottom: 10 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text }}>{authUser.email}</div>
-              <div style={{ fontSize: 10.5, color: T.muted, marginTop: 2 }}>{t("online.auth.verified")}</div>
+          <div data-testid="owner-account" style={card(T.surface, T.border)}>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text }}>{user.email}</div>
+            <div style={{ fontSize: 10.5, color: T.muted, marginTop: 2 }}>{t("online.auth.verified")}</div>
+          </div>
+
+          {/* DEVICE AUTHORIZATION — exactly one state card */}
+          {dStatus === "authorized" && (
+            <div data-testid="device-state-authorized" style={card("#e2f5ec", T.green)}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.green }}>{t("online.device.authorizedThis")}</div>
+              <button data-testid="device-manage" onClick={() => setManageOpen(true)} style={{ ...btnSecondary, marginTop: 8, width: "100%" }}>{t("online.device.manage")}</button>
+            </div>
+          )}
+          {(dStatus === "needs_enrollment" || dStatus === "enrolling" || dStatus === "reauth_required") && (
+            <div data-testid="device-state-needs-enrollment" style={card(T.surface, T.border)}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text, marginBottom: 4 }}>{t("online.device.registerTitle")}</div>
+              <div style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6, marginBottom: 8 }}>{t("online.device.registerBody", { max })}</div>
+              <button data-testid="device-register-open" disabled={busy} onClick={openRegister} style={{ ...btnPrimary, width: "100%" }}>{t("online.device.registerAction")}</button>
+            </div>
+          )}
+          {dStatus === "limit_reached" && (
+            <div data-testid="device-state-limit" style={card("#fdeae7", T.accent)}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text, marginBottom: 4 }}>{t("online.device.limitTitle", { max })}</div>
+              <div style={{ fontSize: 11.5, color: "#7a2e22", lineHeight: 1.6, marginBottom: 8 }}>{t("online.device.limitBody")}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button data-testid="device-manage" onClick={() => setManageOpen(true)} style={{ ...btnPrimary, flex: 1 }}>{t("online.device.manage")}</button>
+                <button data-testid="device-register-open" disabled={busy} onClick={openRegister} style={{ ...btnSecondary, flex: 1 }}>{t("online.device.registerRetry")}</button>
+              </div>
+            </div>
+          )}
+          {dStatus === "revoked" && (
+            <div data-testid="device-state-revoked" style={card("#fdeae7", T.accent)}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text, marginBottom: 4 }}>{t("online.device.revokedTitle")}</div>
+              <div style={{ fontSize: 11.5, color: "#7a2e22", lineHeight: 1.6, marginBottom: 8 }}>{t("online.device.revokedBody")}</div>
+              {!revokedConfirm ? (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button data-testid="device-reauthorize-open" disabled={busy} onClick={() => { setDeviceErr(""); setRevokedConfirm(true); }} style={{ ...btnPrimary, flex: 1 }}>{t("online.device.reauthorize")}</button>
+                  <button data-testid="device-manage" onClick={() => setManageOpen(true)} style={{ ...btnSecondary, flex: 1 }}>{t("online.device.manage")}</button>
+                </div>
+              ) : (
+                <div data-testid="device-reauthorize-confirm">
+                  <div style={{ fontSize: 11.5, color: T.text, lineHeight: 1.6, marginBottom: 8 }}>{t("online.device.reauthorizeConfirm", { max })}</div>
+                  {needsRecentAuth && (
+                    <input type="password" data-testid="device-reauth-password" placeholder={t("online.auth.password")} value={reauthPassword} onChange={(e) => setReauthPassword(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13, marginBottom: 8 }} />
+                  )}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button disabled={busy} onClick={() => { setRevokedConfirm(false); setDeviceErr(""); }} style={{ ...btnSecondary, flex: 1 }}>{t("common.cancel")}</button>
+                    <button data-testid="device-reauthorize-confirm-button" disabled={busy || (needsRecentAuth && !reauthPassword)} onClick={doReauthorizeThisDevice} style={{ ...btnPrimary, flex: 1 }}>{t("common.confirm")}</button>
+                  </div>
+                </div>
+              )}
+              {deviceErr && <div data-testid="device-error" style={{ marginTop: 8, fontSize: 11.5, color: T.accent }}>{deviceErr}</div>}
+            </div>
+          )}
+          {dStatus === "unauthorized" && (
+            <div data-testid="device-state-unauthorized" style={card("#fdeae7", T.accent)}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text, marginBottom: 4 }}>{t("online.device.unauthorizedTitle")}</div>
+              <div style={{ fontSize: 11.5, color: "#7a2e22", lineHeight: 1.6, marginBottom: 8 }}>{t("online.device.unauthorizedBody")}</div>
+              <button data-testid="device-manage" onClick={() => setManageOpen(true)} style={{ ...btnSecondary, width: "100%" }}>{t("online.device.manage")}</button>
+            </div>
+          )}
+          {dStatus === "migration_required" && (
+            <div data-testid="device-state-migration" style={card("#fdeae7", T.accent)}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text, marginBottom: 4 }}>{t("online.device.migrationTitle")}</div>
+              <div style={{ fontSize: 11.5, color: "#7a2e22", lineHeight: 1.6 }}>{t("online.device.migrationBody")}</div>
+            </div>
+          )}
+          {dStatus === "account_mismatch" && (
+            <div data-testid="device-state-mismatch" style={card("#fdeae7", T.accent)}>
+              <div style={{ fontSize: 11.5, color: "#7a2e22", lineHeight: 1.6 }}>{t("online.error.accountMismatch")}</div>
+            </div>
+          )}
+          {(dStatus === "offline" || dStatus === "unavailable") && (
+            <div data-testid="device-state-offline" style={card(T.surface, T.border)}>
+              <div style={{ fontSize: 12, color: T.muted, lineHeight: 1.6 }}>
+                {dStatus === "unavailable" && device.errorCode && !["verification-unavailable", "offline"].includes(device.errorCode)
+                  ? cloudErrorMessage({ code: device.errorCode }, t) : t("online.device.offlineNote")}
+              </div>
+            </div>
+          )}
+          {(dStatus === "unknown" || dStatus === "signed_out") && (
+            <div data-testid="device-state-checking" style={card(T.surface, T.border)}>
+              <div style={{ fontSize: 12, color: T.muted }}>{t("online.auth.checking")}</div>
             </div>
           )}
 
-          {phase2GroupLinking && commercialUser && commercialUser.emailVerified && (
+          {phase2GroupLinking && deviceAuthorized && (
             <div data-testid="badminton-group-linking" style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, marginBottom: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 10 }}>{t("online.groupLink.title")}</div>
               {localGroupNames.length === 0 ? (
@@ -16415,123 +16377,123 @@ function BadQOnlineSheet({ deviceId, groupDefaults, sessionHistory, localGroups,
             </div>
           )}
 
-          {authUser && authUser.emailVerified && (<>
-          {cloudError && (
-            <div style={{ padding: 12, borderRadius: 11, background: "#fdeae7", border: `1px solid ${T.accent}`, fontSize: 12, color: T.accent, marginBottom: 10 }}>{t("online.cloud.connectionError", { error: cloudErrorMessage(cloudError, t) })}</div>
-          )}
-          {isOffline && !cloudError && (
-            <div style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, fontSize: 12, color: T.muted, marginBottom: 10 }}>{t("online.cloud.offlineReconnect")}</div>
-          )}
-          {!phase2GroupLinking && !workspace && !cloudError && !isOffline && (
-            <div style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, fontSize: 12, color: T.muted, marginBottom: 10 }}>{t("online.cloud.connectingWorkspace")}</div>
-          )}
-
-          {/* DEVICE CONFLICT — another device is (or was) the active one. Shown for BOTH the fresh
-              "someone else is active, want to take over?" case AND the "this device was revoked, want it
-              back?" case — same underlying action (claimActiveDevice with isTakeover:true), reused as-is. */}
-          {hasConflict && !takeoverDismissed && (
-            <div style={{ padding: 12, borderRadius: 11, background: "#fdeae7", border: `1px solid ${T.accent}`, marginBottom: 10 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text, marginBottom: 4 }}>
-                {everActiveHere ? t("online.device.movedTitle") : t("online.device.activeElsewhereTitle")}
-              </div>
-              <div style={{ fontSize: 11.5, color: "#7a2e22", lineHeight: 1.6, marginBottom: 10 }}>{t("online.device.takeoverBody")}</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button disabled={busy} onClick={() => setTakeoverDismissed(true)} style={{ flex: 1, padding: "9px 0", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 12.5, fontWeight: 700 }}>{t("common.cancel")}</button>
-                <button disabled={busy} onClick={doTakeover} style={{ flex: 1.4, padding: "9px 0", borderRadius: 9, border: "none", background: T.accent, color: "#fff", fontSize: 12.5, fontWeight: 800, opacity: busy ? 0.6 : 1 }}>{busy ? t("online.device.moving") : t("online.device.moveHere")}</button>
-              </div>
-            </div>
-          )}
-          {hasConflict && takeoverDismissed && (
-            <button onClick={() => setTakeoverDismissed(false)} style={{ width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, fontSize: 12, color: T.muted, marginBottom: 10 }}>🔒 {t("online.device.collapsed", { state: everActiveHere ? t("online.status.moved") : t("online.device.activeElsewhereShort") })}</button>
-          )}
-
-          {/* ACTIVE — this IS the active device */}
-          {status === ONLINE_STATUS.ACTIVE && (
-            <div style={{ padding: 12, borderRadius: 11, background: "#e2f5ec", border: `1px solid ${T.green}`, marginBottom: 10 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.green }}>{t("online.device.activeThis")}</div>
-              {activeSinceDate && <div style={{ fontSize: 10.5, color: T.muted, marginTop: 2 }}>{t("online.device.since", { when: fmtDateTime ? fmtDateTime(activeSinceDate.getTime()) : activeSinceDate.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) })}</div>}
-            </div>
-          )}
-
-          {/* v1.12.12 (P2.2 — CRITICAL: Initial Cloud Data Safety). Cloud genuinely has no Club yet — the
-              ONLY case where an upload is ever offered here, and only with an explicit tap after seeing a
-              summary of what's about to become Cloud's starting data. Never automatic, never inferred from
-              merely becoming the Active Device. */}
-          {status === ONLINE_STATUS.ACTIVE && cloudInitState && cloudInitState.clubsInitialized === false && !initDone && (
-            <div style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, marginBottom: 10 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text, marginBottom: 4 }}>{t("online.cloud.emptyTitle")}</div>
-              {/* v1.12.29 — item 1: this offer card previously said "ใช้ข้อมูลจากอุปกรณ์นี้เป็นข้อมูลตั้งต้น" (use
-                  this device's data as the starting data), the same vague framing the v1.12.28 BUG-1 fix
-                  already corrected one screen later (the confirm dialog). Worded precisely here too now — see
-                  project doc badq-v11228-review-p22-followup.md's "residual finding". */}
-              <div style={{ fontSize: 11, color: T.muted, marginBottom: 8, lineHeight: 1.6 }}>{t("online.cloud.emptyBody")}</div>
-              <button disabled={initBusy} onClick={() => setInitConfirmOpen(true)} style={{ width: "100%", padding: "9px 0", borderRadius: 9, border: "none", background: T.accent, color: "#fff", fontSize: 12.5, fontWeight: 800, opacity: initBusy ? 0.6 : 1 }}>{t("online.cloud.createFirst")}</button>
-            </div>
-          )}
-          {/* Cloud ALREADY has Club data — safe state only, per spec NEVER silently overwritten just because
-              this device is Active. No upload/merge action is offered here at all; full reconciliation
-              between divergent datasets is out of scope for this phase (P2.7). v1.12.29 — UX-2: now also
-              shows the real Club name(s) (loading/empty/error states handled below) instead of just this flat
-              line, via a read-only Firestore query (cloud.listClubs) — see the effect above. */}
-          {status === ONLINE_STATUS.ACTIVE && cloudInitState && cloudInitState.clubsInitialized === true && (
-            <div style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, marginBottom: 10, fontSize: 11.5, color: T.muted }}>
-              <div>{t("online.cloud.existing")}</div>
-              {cloudClubsLoading && <div style={{ marginTop: 6 }}>{t("online.cloud.loadingGroups")}</div>}
-              {!cloudClubsLoading && cloudClubsErr && <div style={{ marginTop: 6, color: T.accent }}>{t("online.cloud.clubListLoadError")}</div>}
-              {!cloudClubsLoading && !cloudClubsErr && cloudClubs && cloudClubs.length === 0 && <div style={{ marginTop: 6 }}>{t("online.cloud.noGroupsYet")}</div>}
-              {!cloudClubsLoading && !cloudClubsErr && cloudClubs && cloudClubs.length > 0 && (
-                <div style={{ marginTop: 6, color: T.text, fontWeight: 700 }}>{cloudClubs.map((c) => (c && c.name) || t("online.cloud.unnamed")).join(", ")}</div>
-              )}
-            </div>
-          )}
-          {initConfirmOpen && (
-            <Overlay onClose={() => { if (!initBusy) setInitConfirmOpen(false); }}>
-              <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 8 }}>{t("online.cloud.createFirstConfirm")}</div>
-              {/* v1.12.29 — UX-1: let the Owner pick which local group seeds the Cloud Club, defaulting to the
-                  group they're currently using (or the first saved group when that one isn't saved). v1.12.28's
-                  BUG-1 fix is preserved and extended: whichever name shows here, in the "will upload" line
-                  below, and in the success message afterward, is always `cloudInitGroupName` — the exact same
-                  value the payload sends, never restated independently. */}
-              {localGroupNames.length > 0 ? (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, color: T.muted, marginBottom: 4 }}>{t("online.cloud.selectFirst")}</div>
-                  <select value={cloudInitGroupName} onChange={(e) => setSelectedGroupName(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 9, border: `1px solid ${T.border}`, fontSize: 13, background: T.surface, color: T.text }}>
-                    {localGroupNames.map((name) => <option key={name} value={name}>{name}</option>)}
-                  </select>
-                </div>
-              ) : (
-                <div style={{ fontSize: 12, color: T.text, marginBottom: 8, lineHeight: 1.7 }}>{t("online.cloud.noLocalGroupsFallback", { name: cloudInitGroupName })}</div>
-              )}
-              <div style={{ fontSize: 12, color: T.text, marginBottom: 8, lineHeight: 1.7 }}>
-                {t("online.cloud.uploadNameOnly", { name: cloudInitGroupName })}
-              </div>
-              <div style={{ fontSize: 11.5, color: T.accent, marginBottom: 10, lineHeight: 1.7, background: "#fdeae7", borderRadius: 8, padding: "8px 10px" }}>
-                {t("online.cloud.notUploading", { otherGroups: otherLocalGroupCount > 0 ? t("online.cloud.otherGroups", { count: otherLocalGroupCount }) : "", sessionCount: localSessionCount })}
-              </div>
-              <div style={{ fontSize: 11, color: T.muted, marginBottom: 14, lineHeight: 1.6 }}>
-                {t("online.cloud.deviceSummary", { deviceType: navigator && navigator.userAgent && /iPhone|Android|Mobile/i.test(navigator.userAgent) ? t("online.device.mobile") : t("online.device.desktopTablet"), count: localGroupCount })}
-                {localMostRecentAt > 0 && <div>{t("online.cloud.updatedAt", { when: fmtDateTime ? fmtDateTime(localMostRecentAt) : new Date(localMostRecentAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) })}</div>}
-              </div>
-              {initErr && <div style={{ marginBottom: 10, fontSize: 12, color: T.accent }}>{initErr}</div>}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button disabled={initBusy} onClick={() => setInitConfirmOpen(false)} style={btnSecondary}>{t("common.cancel")}</button>
-                <button disabled={initBusy} onClick={doConfirmInitialCloudData} style={{ ...btnPrimary, opacity: initBusy ? 0.6 : 1 }}>{initBusy ? t("common.saving") : t("common.confirm")}</button>
-              </div>
-            </Overlay>
-          )}
-          {initDone && (
-            // v1.12.29: still names the exact club created (now Owner-selectable via UX-1) and restates the
-            // scope limit, same discipline as the v1.12.28 BUG-1 fix.
-            <div style={{ marginBottom: 10, fontSize: 12, color: T.green }}>{t("online.cloud.created", { name: cloudInitGroupName })}</div>
-          )}
 
           {err && <div style={{ marginBottom: 10, fontSize: 12, color: T.accent }}>{err}</div>}
           {notice && <div style={{ marginBottom: 10, fontSize: 12, color: T.green }}>{notice}</div>}
-
-          <button disabled={busy} onClick={doLogout} style={btnSecondary}>{t("online.auth.signOut")}</button>
-          </>)}
+          <button data-testid="owner-signout" disabled={busy} onClick={doLogout} style={btnSecondary}>{t("online.auth.signOut")}</button>
         </div>
       )}
+
+      <button data-testid="online-close" onClick={onClose} style={{ ...btnSecondary, width: "100%", marginTop: 14 }}>{t("common.close")}</button>
+
+      {registerOpen && user && user.emailVerified && (
+        <Overlay onClose={() => { if (!busy) setRegisterOpen(false); }}>
+          <div data-testid="device-register-dialog">
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 8 }}>{t("online.device.registerTitle")}</div>
+            <div style={{ fontSize: 12, color: T.text, lineHeight: 1.7, marginBottom: 10 }}>{t("online.device.registerBody", { max })}</div>
+            <Label>{t("online.device.nameLabel")}</Label>
+            <input type="text" data-testid="device-name-input" maxLength={80} value={deviceLabel} onChange={(e) => setDeviceLabel(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13, marginBottom: 10 }} />
+            {needsRecentAuth && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6, marginBottom: 6 }}>{t("online.device.reauthBody")}</div>
+                <input type="password" data-testid="device-reauth-password" placeholder={t("online.auth.password")} value={reauthPassword} onChange={(e) => setReauthPassword(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13 }} />
+              </div>
+            )}
+            {deviceErr && <div data-testid="device-error" style={{ marginBottom: 10, fontSize: 12, color: T.accent }}>{deviceErr}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button disabled={busy} onClick={() => setRegisterOpen(false)} style={btnSecondary}>{t("common.cancel")}</button>
+              <button data-testid="device-register-confirm" disabled={busy || !deviceLabel.trim() || (needsRecentAuth && !reauthPassword)} onClick={doEnroll} style={{ ...btnPrimary, opacity: busy ? 0.6 : 1 }}>{busy ? t("online.device.registering") : t("online.device.registerAction")}</button>
+            </div>
+          </div>
+        </Overlay>
+      )}
+      {manageOpen && user && user.emailVerified && (
+        <DeviceManagementSheet commercial={commercial} device={device} t={t} fmtDateTime={fmtDateTime} onClose={() => setManageOpen(false)} />
+      )}
+    </Overlay>
+  );
+}
+
+// Owner device management: list (this device marked), explicit revoke, explicit reauthorize. Raw device ids / keys are never
+// shown (the bridge only hands out opaque row refs). Revoking never deletes any local BadQ data.
+function DeviceManagementSheet({ commercial, device, t, fmtDateTime, onClose }) {
+  const [rows, setRows] = useState(null);
+  const [loadErr, setLoadErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState(null); // { kind: "revoke" | "reauthorize", ref }
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const max = (device && device.maxAuthorizedDevices) || 2;
+  const needsRecentAuth = !!(device && device.status === "reauth_required");
+  const load = async () => {
+    setLoadErr("");
+    try { setRows(await commercial.listOwnerDevices()); }
+    catch (e) { setRows(null); setLoadErr(cloudErrorMessage(e, t)); }
+  };
+  useEffect(() => { load(); }, []);
+  useEffect(() => { if (rows) load(); }, [device && device.status]);
+  const act = async () => {
+    if (!pending) return;
+    setBusy(true); setErr("");
+    try {
+      if (pending.kind === "revoke") setRows(await commercial.revokeOwnerDevice(pending.ref, { explicit: true }));
+      else {
+        if (needsRecentAuth) { await commercial.reauthenticateOwner(password); setPassword(""); }
+        setRows(await commercial.reauthorizeOwnerDevice(pending.ref, { confirm: true }));
+      }
+      setPending(null);
+    } catch (e) { setErr(cloudErrorMessage(e, t)); }
+    finally { setBusy(false); }
+  };
+  const platformLabel = (p) => (p === "ios" ? "iOS" : p === "android" ? "Android" : p === "web" ? t("online.device.platformWeb") : "");
+  const pendingRow = pending && rows ? rows.find((row) => row.ref === pending.ref) : null;
+  return (
+    <Overlay onClose={onClose}>
+      <div data-testid="device-management">
+        <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>{t("online.device.manage")}</div>
+        <div style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6, marginBottom: 12 }}>{t("online.device.manageHint", { max })}</div>
+        {rows === null && !loadErr && <div style={{ fontSize: 12, color: T.muted }}>{t("online.device.listLoading")}</div>}
+        {loadErr && <div data-testid="device-list-error" style={{ fontSize: 12, color: T.accent, marginBottom: 8 }}>{t("online.device.listError")} — {loadErr}</div>}
+        {rows && rows.length === 0 && <div style={{ fontSize: 12, color: T.muted }}>{t("online.device.listEmpty")}</div>}
+        {rows && rows.map((row) => (
+          <div key={row.ref} data-testid={`device-row-${row.ref}`} data-current={row.isCurrent ? "true" : "false"} data-status={row.status} style={{ padding: "10px 0", borderTop: `1px solid ${T.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.label || t("online.device.defaultName")}{row.isCurrent ? ` · ${t("online.device.thisDevice")}` : ""}</div>
+                <div style={{ fontSize: 10.5, color: T.muted }}>
+                  {[platformLabel(row.platform), row.lastSeenAt ? t("online.device.lastSeen", { when: fmtDateTime ? fmtDateTime(Date.parse(row.lastSeenAt)) : row.lastSeenAt }) : ""].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: row.status === "authorized" ? T.green : T.accent }}>{row.status === "authorized" ? t("online.device.statusAuthorized") : t("online.device.statusRevoked")}</div>
+            </div>
+            {!pending && (
+              <div style={{ marginTop: 6 }}>
+                {row.status === "authorized"
+                  ? <button data-testid={`device-revoke-${row.ref}`} disabled={busy} onClick={() => { setErr(""); setPending({ kind: "revoke", ref: row.ref }); }} style={{ ...btnSecondary, flex: "none", padding: "5px 10px", fontSize: 11.5, color: T.accent }}>{t("online.device.revoke")}</button>
+                  : <button data-testid={`device-reauthorize-${row.ref}`} disabled={busy} onClick={() => { setErr(""); setPending({ kind: "reauthorize", ref: row.ref }); }} style={{ ...btnSecondary, flex: "none", padding: "5px 10px", fontSize: 11.5 }}>{t("online.device.reauthorizeOther")}</button>}
+              </div>
+            )}
+          </div>
+        ))}
+        {pending && pendingRow && (
+          <div data-testid="device-action-confirm" style={{ marginTop: 10, padding: 10, borderRadius: 9, background: T.surface2, border: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 12, color: T.text, lineHeight: 1.6, marginBottom: 8 }}>
+              {pending.kind === "revoke"
+                ? t(pendingRow.isCurrent ? "online.device.revokeThisConfirm" : "online.device.revokeConfirm", { name: pendingRow.label || t("online.device.defaultName") })
+                : t("online.device.reauthorizeConfirm", { max })}
+            </div>
+            {pending.kind === "reauthorize" && needsRecentAuth && (
+              <input type="password" data-testid="device-reauth-password" placeholder={t("online.auth.password")} value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13, marginBottom: 8 }} />
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button disabled={busy} onClick={() => { setPending(null); setErr(""); }} style={{ ...btnSecondary, flex: 1 }}>{t("common.cancel")}</button>
+              <button data-testid="device-action-confirm-button" disabled={busy || (pending.kind === "reauthorize" && needsRecentAuth && !password)} onClick={act} style={{ ...btnPrimary, flex: 1 }}>{t("common.confirm")}</button>
+            </div>
+          </div>
+        )}
+        {err && <div data-testid="device-error" style={{ marginTop: 8, fontSize: 11.5, color: T.accent }}>{err}</div>}
+        <button onClick={onClose} style={{ ...btnSecondary, marginTop: 14, width: "100%" }}>{t("common.close")}</button>
+      </div>
     </Overlay>
   );
 }
@@ -20592,8 +20554,8 @@ function SettingsTab({
           every sentence/status string below (those stay exactly as they were — only offline/local features
           must never read as Beta, and BadQOnlineNavRow's own live status text is functional, not the
           feature's marketing name). */}
-      <SectionLabel>☁️ BadQ Online (Beta)</SectionLabel>
-      <BadQOnlineNavRow deviceId={deviceId} onOpen={() => setView("online")} tr={t} />
+      <SectionLabel>{t("online.accountTitle")}</SectionLabel>
+      <BadQOnlineNavRow onOpen={() => setView("online")} tr={t} />
       <SectionLabel>{t("settings.sectionLabel")}</SectionLabel>
       <Row tutorialId="settings-advanced-row" icon="🚀" title={t("settings.advanced")} sub={t("settings.advancedRowSub")} onClick={() => setView("advanced")} />
       <Row icon="⚙️" title={t("settings.general")} sub={t("settings.generalRowSub")} onClick={() => setView("general")} />
@@ -20629,7 +20591,7 @@ function SettingsTab({
           BadQOnlineNavRow/BadQOnlineSheet components P2.1 already shipped — only where they're mounted from
           has changed, nothing about their own behavior/authority logic. */}
       {view === "online" && (
-        <BadQOnlineSheet deviceId={deviceId} groupDefaults={groupDefaults} sessionHistory={sessionHistory} localGroups={localGroups} currentLocalGroupId={session && session.localGroupId} currentGroupName={session && session.name} players={players} t={t} fmtDateTime={fmtDateTime} onClose={() => setView(null)} />
+        <BadQOnlineSheet groupDefaults={groupDefaults} sessionHistory={sessionHistory} localGroups={localGroups} currentLocalGroupId={session && session.localGroupId} currentGroupName={session && session.name} players={players} t={t} fmtDateTime={fmtDateTime} onClose={() => setView(null)} />
       )}
       {view === "backup" && (
         <Overlay onClose={() => setView(null)}>
