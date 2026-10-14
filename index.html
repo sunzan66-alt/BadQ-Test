@@ -913,7 +913,7 @@
   // explicit user tap — never as a side effect of just opening the app.
   (function(){
     try{
-      var CURRENT_VERSION = "1.15.0";
+      var CURRENT_VERSION = "1.15.6";
       var qs = new URLSearchParams(location.search);
       if (qs.get("_v")) return; // already just reloaded once via a manual update tap, avoid loops
       fetch(location.pathname, { cache: "no-store" })
@@ -2197,6 +2197,13 @@ const th = defineMessages("th", [
   ["finance.billDetailsTitle", "รายละเอียดค่าก๊วน"],
   ["finance.doublesBreakdownLine", "คู่ {games} เกม × ฿{rate} = {total}"],
   ["finance.singlesBreakdownLine", "เดี่ยว {games} เกม × ฿{rate} = {total}"],
+  ["finance.doublesBreakdownLineShuttle", "คู่ {games} ลูก × ฿{rate} = {total}"],
+  ["finance.singlesBreakdownLineShuttle", "เดี่ยว {games} ลูก × ฿{rate} = {total}"],
+  ["finance.shuttleBillingModeLabel", "วิธีคิดค่าลูกแบด"],
+  ["finance.shuttleBillingPerGame", "คิดตามเกมที่ตี"],
+  ["finance.shuttleBillingPerShuttle", "คิดตามลูกที่ใช้จริง"],
+  ["finance.shuttleBillingPerGameNote", "เก็บค่าลูกตามอัตราเดิม 1 ลูกต่อเกมที่ตีจบ ไม่ว่าจะใช้กี่ลูก (ต้นทุนยังคิดตามลูกที่ใช้จริง)"],
+  ["finance.shuttleBillingPerShuttleNote", "เก็บค่าลูกตามอัตราเดิม × จำนวนลูกที่ใช้จริงของแต่ละเกม (แก้จำนวนลูกได้ที่ช่อง \"ลูก\" ของเกมนั้น)"],
   ["finance.shuttleCostShort", "ค่าลูก"],
   ["common.miscellaneous", "อื่น ๆ"],
   ["finance.carriedDiscountLabel", "ส่วนลดจากรอบที่แล้ว"],
@@ -2906,7 +2913,7 @@ const th = defineMessages("th", [
   ["backup.sessionRecordCount.other", "ประวัติก๊วน {count} ครั้ง"],
   ["backup.matchTotalCount.one", "แมตช์ทั้งหมด {count} แมตช์"],
   ["backup.matchTotalCount.other", "แมตช์ทั้งหมด {count} แมตช์"],
-  ["backup.diagLogTitle", "Diagnostic Log (v1.11.47, ชั่วคราว)"],
+  ["backup.diagLogTitle", "Diagnostic Log (ชั่วคราว)"],
   ["backup.bootLogTitle", "บันทึกการซิงค์ข้อมูล (debug)"],
   ["backup.diagRefresh", "รีเฟรช"],
   ["backup.diagCopyAll", "คัดลอกทั้งหมด"],
@@ -3064,17 +3071,130 @@ const th = defineMessages("th", [
   ["online.status.deviceLimit", "ครบจำนวนอุปกรณ์แล้ว"],
   ["online.status.deviceRevoked", "อุปกรณ์นี้ถูกยกเลิกสิทธิ์"],
   ["online.status.deviceUnauthorized", "อุปกรณ์นี้ยังไม่ได้รับอนุญาต"],
+  ["online.status.noEntitlement", "ยังไม่มีสิทธิ์ใช้งานออนไลน์"],
+  ["online.entitlement.title", "สิทธิ์ใช้งานออนไลน์"],
+  ["online.entitlement.none", "บัญชีนี้ยังไม่ได้รับสิทธิ์ใช้งานออนไลน์ จึงยังใช้งานก๊วนออนไลน์และการซิงค์ผู้เล่นไม่ได้"],
+  ["online.entitlement.expired", "สิทธิ์ใช้งานออนไลน์ของบัญชีนี้หมดอายุแล้ว จึงยังใช้งานก๊วนออนไลน์และการซิงค์ผู้เล่นไม่ได้"],
+  ["online.entitlement.revoked", "สิทธิ์ใช้งานออนไลน์ของบัญชีนี้ถูกยกเลิกแล้ว จึงยังใช้งานก๊วนออนไลน์และการซิงค์ผู้เล่นไม่ได้"],
+  ["online.entitlement.invalid", "ตรวจสอบสิทธิ์ใช้งานออนไลน์ไม่ได้เพราะข้อมูลจากเซิร์ฟเวอร์ไม่ถูกต้อง จึงปิดฟีเจอร์ออนไลน์ไว้ก่อน"],
+  ["online.entitlement.unverified", "ยังตรวจสอบสิทธิ์ใช้งานออนไลน์ไม่ได้ในขณะนี้ (เช่น ออฟไลน์) ซึ่งไม่ได้หมายความว่าสิทธิ์ถูกยกเลิก — ลองตรวจสอบอีกครั้งเมื่อเชื่อมต่ออินเทอร์เน็ต"],
+  ["online.entitlement.localNote", "ข้อมูลในเครื่อง ก๊วนที่บันทึกไว้ ผู้เล่น ประวัติ รูปภาพ และการสำรอง/กู้คืนข้อมูล ยังใช้งานได้ตามปกติ"],
+  ["online.entitlement.recheck", "ตรวจสอบสิทธิ์อีกครั้ง"],
   ["online.status.mismatch", "คนละบัญชีกับที่เชื่อมไว้"],
   ["online.device.defaultName", "อุปกรณ์ของฉัน"],
   ["online.device.registerTitle", "ลงทะเบียนอุปกรณ์นี้"],
-  ["online.device.registerBody", "อุปกรณ์นี้จะถูกลงทะเบียนกับบัญชี Owner ของคุณ BadQ Full ใช้ได้สูงสุด {max} อุปกรณ์"],
+  ["online.device.registerBody", "อุปกรณ์นี้ยังไม่ได้ลงทะเบียนกับบัญชี Owner ของคุณ แพ็กเกจของคุณใช้ได้สูงสุด {max} อุปกรณ์ ระบบจะไม่ลงทะเบียนให้อัตโนมัติ — ต้องกดยืนยันเอง"],
+  ["online.device.registerConfirmTitle", "ยืนยันการลงทะเบียนอุปกรณ์"],
+  ["online.device.registerConfirmAction", "ยืนยันลงทะเบียนเครื่องนี้"],
+  ["online.device.registerDialogBody", "อุปกรณ์นี้จะถูกลงทะเบียนกับบัญชี Owner ของคุณ แพ็กเกจของคุณใช้ได้สูงสุด {max} อุปกรณ์ — การยืนยันจะใช้ 1 จาก {max} ช่อง หน้าต่าง Private/Incognito หรือเบราว์เซอร์ใหม่จะนับเป็นอุปกรณ์ใหม่ทุกครั้ง และช่องจะไม่คืนเมื่อปิดหน้าต่าง แนะนำให้ใช้เบราว์เซอร์ปกติหรือแอปที่ติดตั้ง"],
+  ["online.device.registerCancelled", "ยกเลิกแล้ว — ยังไม่มีการลงทะเบียนอุปกรณ์นี้"],
+  ["online.status.reauthRequired", "ต้องยืนยันตัวตนอีกครั้ง"],
+  ["online.device.reauthTitle", "ยืนยันตัวตนเพื่ออนุญาตอุปกรณ์นี้อีกครั้ง"],
+  ["online.device.reauthRecoveryBody", "ต้องยืนยันตัวตนด้วยรหัสผ่านอีกครั้งก่อนจึงจะอนุญาตอุปกรณ์เดิมนี้ได้ ไม่ใช่การลงทะเบียนอุปกรณ์ใหม่ และจะไม่ใช้โควตาอุปกรณ์เพิ่ม"],
+  ["online.device.reauthContinue", "ยืนยันและอนุญาตต่อ"],
+  ["online.device.reauthCancelled", "ยกเลิกแล้ว — ยังไม่มีการอนุญาตอุปกรณ์อีกครั้ง"],
+  ["license.plan.badq", "BAD_Q — ซื้อขาด ใช้ได้ตลอดชีพ 1 เครื่อง"],
+  ["license.plan.plus", "PLUS — รายเดือน 2 เครื่อง ซิงก์ข้อมูล Owner อัตโนมัติ"],
+  ["license.plan.pro", "PRO — รายเดือน 3 เครื่อง + Member Portal"],
+  ["license.plan.founder", "Founder — สิทธิ์ทุกฟีเจอร์ระดับสูงสุด ตลอดชีพ"],
+  ["license.plan.legacy", "Early Access (สิทธิ์ทดลองก่อนเปิดตัว)"],
+  ["license.plan.none", "ยังไม่มีแพ็กเกจ"],
+  ["license.state.notStarted", "ยังไม่เริ่มทดลองใช้"],
+  ["license.state.trial", "ทดลองใช้"],
+  ["license.state.active", "ใช้งานอยู่"],
+  ["license.state.grace", "ช่วงผ่อนผัน"],
+  ["license.state.expired", "หมดอายุ"],
+  ["license.state.revoked", "ถูกเพิกถอน"],
+  ["license.state.released", "ปลดล็อกเครื่องเพื่อย้ายแล้ว"],
+  ["license.state.unverified", "ยังไม่ได้ตรวจสอบกับเซิร์ฟเวอร์"],
+  ["license.state.invalid", "ข้อมูลสิทธิ์ไม่ถูกต้อง"],
+  ["license.state.none", "ไม่มีสิทธิ์ใช้งาน"],
+  ["license.lifetime", "ใช้งานตลอดชีพ"],
+  ["license.trialLeft", "ทดลองใช้เหลืออีก {days} วัน"],
+  ["license.validUntil", "ใช้ได้ถึง {date}"],
+  ["license.endedOn", "หมดอายุเมื่อ {date}"],
+  ["license.renewalAuto", "ต่ออายุอัตโนมัติ วันที่ {date}"],
+  ["license.renewalManual", "ไม่ต่ออายุอัตโนมัติ"],
+  ["license.renewalCancels", "ยกเลิกการต่ออายุแล้ว — สิ้นสุด {date}"],
+  ["license.deviceCapacity", "ใช้ได้สูงสุด {max} อุปกรณ์"],
+  ["license.localNote", "ข้อมูลในเครื่องของคุณไม่ถูกลบหรือซ่อน แม้สิทธิ์จะหมดอายุหรือถูกเพิกถอน"],
+  ["license.sync.planNo", "แพ็กเกจนี้เก็บข้อมูลในเครื่องเท่านั้น (ย้ายเครื่องด้วยสำรอง/กู้คืน)"],
+  ["license.sync.off", "ซิงก์ข้อมูลหยุดทำงาน — ต้องมีสิทธิ์ที่ยืนยันกับเซิร์ฟเวอร์แล้ว"],
+  ["license.sync.idle", "ซิงก์ข้อมูลอัตโนมัติ: ข้อมูลล่าสุดแล้ว"],
+  ["license.sync.syncing", "ซิงก์ข้อมูลอัตโนมัติ: กำลังซิงก์"],
+  ["license.sync.offline", "ซิงก์ข้อมูลอัตโนมัติ: ออฟไลน์ — จะซิงก์เมื่อกลับมาออนไลน์"],
+  ["license.sync.retrying", "ซิงก์ข้อมูลอัตโนมัติ: จะลองใหม่อัตโนมัติ"],
+  ["license.sync.conflict", "ซิงก์ข้อมูลอัตโนมัติ: มีรายการที่ขัดแย้ง ต้องเลือกด้วยตัวเอง"],
+  ["license.sync.paused", "ซิงก์ข้อมูลอัตโนมัติ: หยุดชั่วคราว"],
+  ["license.sync.disabled", "ซิงก์ข้อมูลอัตโนมัติ: ยังไม่พร้อม (ต้องเชื่อมกลุ่มกับ Cloud และอุปกรณ์ได้รับสิทธิ์)"],
+  ["license.sync.reviewRequired", "ซิงก์ข้อมูลอัตโนมัติ: รอให้คุณตรวจสอบก่อน (กู้คืน/ลบจำนวนมาก)"],
+  ["license.sync.initialDecisionRequired", "ซิงก์ข้อมูลอัตโนมัติ: รอให้คุณเลือกวิธีเริ่มต้น"],
+  ["license.sync.error", "ซิงก์ข้อมูลอัตโนมัติ: เกิดข้อผิดพลาด"],
+  ["license.sync.pendingService", "ซิงก์ข้อมูลอัตโนมัติ: บริการยังไม่เปิดใช้งาน ข้อมูลทั้งหมดยังอยู่ในเครื่อง"],
+  ["license.local.title", "สิทธิ์ใช้งาน BAD_Q ของเครื่องนี้"],
+  ["license.local.planLine", "BAD_Q — ซื้อครั้งเดียว {price} บาท ใช้ได้ตลอดชีพ (ทดลองใช้ 72 ชั่วโมงก่อนได้ ครั้งเดียวต่อบัญชี)"],
+  ["license.local.noCloud", "ไม่รวม Cloud Sync และ Member Portal"],
+  ["license.local.trialEnds", "ทดลองใช้ถึง {date}"],
+  ["license.local.clockNote", "ตรวจพบนาฬิกาเครื่องย้อนหลัง — ระบบใช้เวลาล่าสุดที่เคยเห็นเพื่อนับต่อ (การตรวจแบบออฟไลน์เป็นเพียงข้อมูลประกอบ)"],
+  ["license.local.notActivatedNote", "ยังไม่ได้เปิดใช้งาน — เข้าสู่ระบบ ลงทะเบียนเครื่องนี้ แล้วเริ่มทดลอง 72 ชั่วโมงหรือใช้รหัสซื้อขาด ดู/สำรอง/กู้คืนข้อมูลได้ตามปกติ"],
+  ["license.local.checkingNote", "กำลังตรวจสอบสิทธิ์ที่เก็บไว้ในเครื่อง"],
+  ["license.local.trialNote", "ช่วงทดลอง 72 ชั่วโมงนับจากเซิร์ฟเวอร์ครั้งเดียวต่อบัญชี ใช้ออฟไลน์ได้จนครบเวลา การย้อนนาฬิกาไม่ช่วยให้ใช้ได้นานขึ้น"],
+  ["license.local.trialExpiredNote", "หมดช่วงทดลองแล้ว — เริ่มเกมใหม่ไม่ได้ แต่ข้อมูลทั้งหมดยังอยู่ ดู/สำรอง/กู้คืนได้ และเกมที่กำลังเล่นเล่นต่อจนจบได้ ใช้รหัสซื้อขาดเพื่อใช้ต่อ"],
+  ["license.local.activeNote", "เปิดใช้งานแล้ว ใช้ออฟไลน์ได้ตลอดโดยไม่ต้องเช็กอินเน็ตอีก ย้ายเครื่องด้วยไฟล์สำรอง/กู้คืน และให้ Admin ปลดล็อกเครื่องเดิมก่อน"],
+  ["license.local.revokedNote", "เซิร์ฟเวอร์แจ้งว่าสิทธิ์ถูกเพิกถอน — เริ่มเกมใหม่ไม่ได้ ข้อมูลในเครื่องยังอยู่ครบ ติดต่อ Admin"],
+  ["license.local.deviceReleasedNote", "Admin ปลดล็อกเครื่องนี้แล้ว (เช่น ย้ายเครื่อง) — เริ่มเกมใหม่ไม่ได้ ข้อมูลยังอยู่ครบ ใช้ไฟล์สำรองย้ายไปเครื่องใหม่ได้"],
+  ["license.local.invalidNote", "สิทธิ์ที่เก็บไว้ในเครื่องตรวจสอบไม่ผ่าน — ข้อมูลกลุ่ม/ผู้เล่น/การเงินไม่ได้รับผลกระทบ เชื่อมต่อเน็ตแล้วกดรีเฟรชสิทธิ์ หรือกู้คืนสถานะสิทธิ์"],
+  ["license.local.signInHint", "เข้าสู่ระบบบัญชี Owner ด้านล่างเพื่อเปิดใช้งาน (ต้องใช้เน็ตเฉพาะตอนเปิดใช้งานครั้งแรก)"],
+  ["license.local.onlineUnavailable", "บริการออนไลน์ยังไม่พร้อม — ต้องเชื่อมต่อเน็ตเพื่อเปิดใช้งานครั้งแรก"],
+  ["license.local.registerDevice", "ลงทะเบียนเครื่องนี้"],
+  ["license.local.startTrial", "เริ่มทดลอง 72 ชั่วโมง"],
+  ["license.local.redeem", "ใช้รหัสซื้อขาด"],
+  ["license.local.refresh", "รีเฟรชสิทธิ์"],
+  ["license.local.migrate", "อัปเกรดโปรโตคอลอุปกรณ์"],
+  ["license.local.recover", "กู้คืนสถานะสิทธิ์"],
+  ["license.local.confirm", "ยืนยัน"],
+  ["license.local.cancel", "ยกเลิก"],
+  ["license.local.codePlaceholder", "รหัสที่ได้รับจาก Admin"],
+  ["license.local.enrollConfirm", "ลงทะเบียน “{device}” เป็นอุปกรณ์เดียวที่ได้รับอนุญาตของบัญชีนี้? แพ็กเกจ BAD_Q ใช้ได้ 1 เครื่อง ย้ายเครื่องต้องให้ Admin ปลดล็อกเครื่องเดิมก่อน"],
+  ["license.local.trialConfirm", "เริ่มทดลอง 72 ชั่วโมง? เริ่มได้ครั้งเดียวต่อบัญชี และนับเวลาจากเซิร์ฟเวอร์ทันที"],
+  ["license.local.migrateConfirm", "อัปเกรดโปรโตคอลอุปกรณ์: จะสร้างรหัสอุปกรณ์ใหม่ให้เครื่องนี้ (ไม่ใช่บัญชีใหม่) ข้อมูลในเครื่องและประวัติเครื่องเก่าที่ถูกปลดล็อกไว้จะไม่ถูกลบ ทำได้หลังจาก Admin ปลดล็อกเครื่องเก่าทั้งหมดแล้ว"],
+  ["license.err.offline", "ไม่มีอินเทอร์เน็ต — ต้องออนไลน์เฉพาะตอนเปิดใช้งาน ข้อมูลในเครื่องไม่ได้รับผลกระทบ"],
+  ["license.err.unavailable", "เซิร์ฟเวอร์ยังไม่ตอบสนอง ลองใหม่อีกครั้ง ไม่มีอะไรถูกลบ"],
+  ["license.err.enrollNeeded", "ต้องลงทะเบียนเครื่องนี้ก่อน"],
+  ["license.err.deviceLimit", "บัญชีนี้มีอุปกรณ์ที่ได้รับอนุญาตครบ 1 เครื่องแล้ว — ให้ Admin ปลดล็อกเครื่องเดิมก่อน"],
+  ["license.err.unlockRequired", "ยังมีอุปกรณ์เก่าที่ได้รับอนุญาต — ให้ Admin ปลดล็อกเครื่องเก่าก่อน ยังไม่มีการใช้รหัสหรือสิทธิ์ทดลอง"],
+  ["license.err.migrationRequired", "บัญชีนี้มีประวัติอุปกรณ์แบบเก่า — หลังจาก Admin ปลดล็อกเครื่องเก่าทั้งหมดแล้ว กดอัปเกรดโปรโตคอลอุปกรณ์เพื่อยืนยันแยกต่างหาก"],
+  ["license.err.reauth", "ต้องยืนยันตัวตนอีกครั้งด้วยรหัสผ่าน (ภายใน 5 นาที) เพื่อดำเนินการต่อ"],
+  ["license.err.sessionChanged", "บัญชีที่เข้าสู่ระบบเปลี่ยนไประหว่างทำรายการ — ไม่มีการส่งข้อมูล ลองใหม่อีกครั้ง"],
+  ["license.err.accountMismatch", "บัญชีไม่ตรงกับข้อมูลที่เซิร์ฟเวอร์ตอบ — หยุดเพื่อความปลอดภัย"],
+  ["license.err.emailNotVerified", "ต้องยืนยันอีเมลของบัญชีก่อน"],
+  ["license.err.contractInvalid", "คำตอบจากเซิร์ฟเวอร์ไม่ตรงรูปแบบที่คาดไว้ — หยุดเพื่อความปลอดภัย ไม่มีการเปลี่ยนสิทธิ์"],
+  ["license.err.keyUntrusted", "ใบอนุญาตลงนามด้วยกุญแจที่แอปนี้ยังไม่เชื่อถือ — ไม่รับ"],
+  ["license.err.signatureInvalid", "ลายเซ็นใบอนุญาตไม่ถูกต้อง — ไม่รับ"],
+  ["license.err.licenseRejected", "ใบอนุญาตไม่ตรงกับบัญชี/เครื่อง/สภาพแวดล้อมนี้ — ไม่รับ"],
+  ["license.err.revoked", "สิทธิ์ถูกเพิกถอน ติดต่อ Admin"],
+  ["license.err.expired", "สิทธิ์หมดอายุ"],
+  ["license.err.deviceReleased", "เครื่องนี้ถูก Admin ปลดล็อกแล้ว"],
+  ["license.err.grantRequired", "บัญชีนี้ยังไม่มีสิทธิ์ทดลองหรือสิทธิ์ซื้อขาด — เริ่มทดลองหรือใช้รหัสก่อน"],
+  ["license.err.codeInvalid", "รหัสไม่ถูกต้องหรือใช้ไม่ได้กับบัญชีนี้"],
+  ["license.err.inProgress", "กำลังลงทะเบียนให้บัญชีอื่นอยู่ — รอให้เสร็จก่อน"],
+  ["license.err.generic", "ทำรายการไม่สำเร็จ ข้อมูลในเครื่องไม่ได้รับผลกระทบ"],
+  ["license.gate.title", "โหมดอ่านอย่างเดียว"],
+  ["license.gate.banner", "เริ่มเกมใหม่ไม่ได้จนกว่าจะมีสิทธิ์ใช้งาน BAD_Q ที่ใช้ได้ ข้อมูล ประวัติ การเงิน และสำรอง/กู้คืนใช้ได้ตามปกติ เกมที่กำลังเล่นเล่นต่อจนจบได้ ไม่มีการลบข้อมูล"],
+  ["license.gate.openLicense", "เปิดสิทธิ์ใช้งาน"],
+  ["license.gate.openBackup", "สำรองข้อมูล"],
+  ["license.gate.blocked", "เริ่มเกมใหม่ไม่ได้ — ยังไม่มีสิทธิ์ใช้งาน BAD_Q ที่ใช้ได้ (ข้อมูลทั้งหมดยังอยู่ ดู/สำรอง/กู้คืนได้ตามปกติ)"],
+  ["license.state.notActivated", "ยังไม่ได้เปิดใช้งาน"],
+  ["license.state.trialExpired", "หมดช่วงทดลอง"],
+  ["license.state.deviceReleased", "เครื่องถูกปลดล็อกแล้ว"],
+  ["license.state.checking", "กำลังตรวจสอบ"],
   ["online.device.registerAction", "ลงทะเบียนอุปกรณ์นี้"],
   ["online.device.registerRetry", "ลองลงทะเบียนอีกครั้ง"],
   ["online.device.registering", "กำลังลงทะเบียน…"],
   ["online.device.nameLabel", "ชื่ออุปกรณ์"],
   ["online.device.authorizedThis", "อุปกรณ์นี้ลงทะเบียนแล้ว ใช้ฟีเจอร์ออนไลน์ได้"],
   ["online.device.limitTitle", "ลงทะเบียนอุปกรณ์ครบ {max} เครื่องแล้ว"],
-  ["online.device.limitBody", "บัญชีนี้มีอุปกรณ์ครบจำนวนที่กำหนดแล้ว หากต้องการใช้เครื่องนี้ ให้เลือกยกเลิกสิทธิ์ของอุปกรณ์อื่นเอง — ระบบจะไม่ยกเลิกหรือแทนที่ให้อัตโนมัติ"],
+  ["online.device.limitBody", "บัญชีนี้มีอุปกรณ์ครบจำนวนที่กำหนดแล้ว (รวมอุปกรณ์จากหน้าต่าง Private/Incognito ที่ปิดไปแล้ว ซึ่งยังนับอยู่จนกว่าจะยกเลิกสิทธิ์) หากต้องการใช้เครื่องนี้ ให้เลือกยกเลิกสิทธิ์ของอุปกรณ์อื่นเอง — ระบบจะไม่ยกเลิกหรือแทนที่ให้อัตโนมัติ"],
   ["online.device.manage", "จัดการอุปกรณ์"],
   ["online.device.manageHint", "บัญชีนี้ใช้ได้สูงสุด {max} อุปกรณ์ การยกเลิกสิทธิ์ไม่ลบข้อมูลในอุปกรณ์นั้น"],
   ["online.device.revokedTitle", "อุปกรณ์นี้ถูกยกเลิกสิทธิ์แล้ว"],
@@ -3099,7 +3219,7 @@ const th = defineMessages("th", [
   ["online.device.listError", "โหลดรายการอุปกรณ์ไม่สำเร็จ"],
   ["online.device.listEmpty", "ยังไม่มีอุปกรณ์ที่ลงทะเบียน"],
   ["online.device.platformWeb", "เว็บ/PWA"],
-  ["online.error.deviceLimit", "บัญชีนี้ลงทะเบียนอุปกรณ์ครบจำนวนแล้ว — เลือกยกเลิกสิทธิ์อุปกรณ์อื่นก่อน"],
+  ["online.error.deviceLimit", "ใช้อุปกรณ์ครบ 2 เครื่องแล้ว\nกรุณายกเลิกสิทธิ์อุปกรณ์เครื่องหนึ่งก่อน แล้วจึงเปิดสิทธิ์เครื่องนี้อีกครั้ง"],
   ["online.error.deviceRevoked", "อุปกรณ์นี้ถูกยกเลิกสิทธิ์แล้ว"],
   ["online.error.deviceAuth", "เซิร์ฟเวอร์ไม่ยืนยันสิทธิ์ของอุปกรณ์นี้"],
   ["online.error.deviceEnrollmentRequired", "ต้องลงทะเบียนอุปกรณ์นี้ก่อน"],
@@ -3107,6 +3227,8 @@ const th = defineMessages("th", [
   ["online.error.deviceCredential", "เก็บรหัสอุปกรณ์ในเครื่องนี้ไม่ได้ (เบราว์เซอร์อาจบล็อกที่เก็บข้อมูล) ฟีเจอร์ออนไลน์จึงปิดอยู่"],
   ["online.error.recentAuth", "ต้องกรอกรหัสผ่านอีกครั้งเพื่อยืนยันตัวตนก่อนทำรายการนี้"],
   ["online.error.deviceNotFound", "ไม่พบอุปกรณ์นี้ในรายการ"],
+  ["online.error.sessionChanged", "บัญชีที่ลงชื่อเข้าใช้เปลี่ยนไประหว่างทำรายการ จึงยกเลิกการลงทะเบียน — ไม่มีการเปลี่ยนแปลงใดๆ"],
+  ["online.error.enrollmentInProgress", "กำลังลงทะเบียนอุปกรณ์อยู่ กรุณารอสักครู่"],
   ["online.error.accountMismatch", "บัญชีนี้ไม่ตรงกับบัญชีที่เชื่อมก๊วนไว้ในเครื่องนี้ จึงไม่เปิดฟีเจอร์ออนไลน์ (ข้อมูลในเครื่องไม่ได้รับผลกระทบ)"],
   ["online.error.environmentMismatch", "การตั้งค่าสภาพแวดล้อมออนไลน์ไม่ถูกต้อง ฟีเจอร์ออนไลน์จึงปิดอยู่"],
   ["online.error.contractInvalid", "ข้อมูลที่ได้จากเซิร์ฟเวอร์ไม่ถูกต้อง ฟีเจอร์ออนไลน์จึงปิดอยู่"],
@@ -3151,6 +3273,10 @@ const th = defineMessages("th", [
   ["online.groupLink.unlink", "ยกเลิกการเชื่อม"],
   ["online.groupLink.unlinkConfirm", "ยกเลิกการเชื่อมก๊วนในเครื่องนี้กับก๊วนบน Cloud หรือไม่? ข้อมูล BadQ ในเครื่องจะไม่ถูกลบหรือเปลี่ยนแปลง"],
   ["online.groupLink.createConfirm", "สร้างก๊วนแบดบน Cloud ชื่อ \"{name}\" และเชื่อมกับก๊วนในเครื่องนี้หรือไม่?"],
+  ["online.groupConfirm.createTitle", "ยืนยันสร้างก๊วนบน Cloud"],
+  ["online.groupConfirm.unlinkTitle", "ยืนยันยกเลิกการเชื่อม"],
+  ["online.groupConfirm.createCancelled", "ยกเลิกแล้ว — ยังไม่ได้สร้างก๊วนบน Cloud"],
+  ["online.groupConfirm.unlinkCancelled", "ยกเลิกแล้ว — การเชื่อมก๊วนยังคงเดิม"],
   ["online.groupLink.linked", "เชื่อมกับ {name} แล้ว"],
   ["online.groupLink.unlinked", "ก๊วนในเครื่องนี้ยังไม่ได้เชื่อม"],
   ["online.groupLink.validated", "ตรวจสอบลิงก์แล้ว"],
@@ -4112,6 +4238,13 @@ const en = defineMessages("en", [
   ["finance.billDetailsTitle", "Session bill details"],
   ["finance.doublesBreakdownLine", "Doubles {games} games × ฿{rate} = {total}"],
   ["finance.singlesBreakdownLine", "Singles {games} games × ฿{rate} = {total}"],
+  ["finance.doublesBreakdownLineShuttle", "Doubles {games} shuttles × ฿{rate} = {total}"],
+  ["finance.singlesBreakdownLineShuttle", "Singles {games} shuttles × ฿{rate} = {total}"],
+  ["finance.shuttleBillingModeLabel", "Shuttle billing method"],
+  ["finance.shuttleBillingPerGame", "Per game played"],
+  ["finance.shuttleBillingPerShuttle", "Per shuttle actually used"],
+  ["finance.shuttleBillingPerGameNote", "Charges the existing rate once per completed game, whatever number of shuttles was used (cost still follows the shuttles actually used)."],
+  ["finance.shuttleBillingPerShuttleNote", "Charges the existing rate × the shuttles actually used in each game (edit the quantity in that game's shuttle field)."],
   ["finance.shuttleCostShort", "Shuttle fee"],
   ["common.miscellaneous", "Miscellaneous"],
   ["finance.carriedDiscountLabel", "Credit from last round"],
@@ -4800,7 +4933,7 @@ const en = defineMessages("en", [
   ["backup.sessionRecordCount.other", "{count} session records"],
   ["backup.matchTotalCount.one", "{count} match total"],
   ["backup.matchTotalCount.other", "{count} matches total"],
-  ["backup.diagLogTitle", "Diagnostic log (v1.11.47, temporary)"],
+  ["backup.diagLogTitle", "Diagnostic Log (Temporary)"],
   ["backup.bootLogTitle", "Data sync log (debug)"],
   ["backup.diagRefresh", "Refresh"],
   ["backup.diagCopyAll", "Copy all"],
@@ -4958,17 +5091,130 @@ const en = defineMessages("en", [
   ["online.status.deviceLimit", "Device limit reached"],
   ["online.status.deviceRevoked", "This device was removed"],
   ["online.status.deviceUnauthorized", "This device is not authorized"],
+  ["online.status.noEntitlement", "No online access"],
+  ["online.entitlement.title", "Online access"],
+  ["online.entitlement.none", "This account has no Online access, so Online groups and Player Sync are unavailable."],
+  ["online.entitlement.expired", "This account's Online access has expired, so Online groups and Player Sync are unavailable."],
+  ["online.entitlement.revoked", "This account's Online access was revoked, so Online groups and Player Sync are unavailable."],
+  ["online.entitlement.invalid", "Online access could not be verified because the server reply was invalid, so Online features are turned off for now."],
+  ["online.entitlement.unverified", "Online access cannot be verified right now (for example, you are offline). This does not mean it was revoked — check again when you are connected."],
+  ["online.entitlement.localNote", "Your local data, saved groups, players, history, images and Backup/Restore keep working as normal."],
+  ["online.entitlement.recheck", "Check access again"],
   ["online.status.mismatch", "Different account than linked"],
   ["online.device.defaultName", "My device"],
   ["online.device.registerTitle", "Register this device"],
-  ["online.device.registerBody", "This device will be registered to your Owner account. BadQ Full allows up to {max} devices."],
+  ["online.device.registerBody", "This device is not registered to your Owner account yet. Your plan allows up to {max} devices. BadQ never registers a device automatically — you must confirm it yourself."],
+  ["online.device.registerConfirmTitle", "Confirm device registration"],
+  ["online.device.registerConfirmAction", "Confirm registration of this device"],
+  ["online.device.registerDialogBody", "This device will be registered to your Owner account. Your plan allows up to {max} devices — confirming uses 1 of the {max} slots. A Private/Incognito window or a new browser counts as a new device every time, and its slot is not freed when the window closes. Use your normal browser or the installed app."],
+  ["online.device.registerCancelled", "Cancelled — this device was not registered"],
+  ["online.status.reauthRequired", "Identity confirmation needed"],
+  ["online.device.reauthTitle", "Confirm your identity to reauthorize this device"],
+  ["online.device.reauthRecoveryBody", "Please confirm your password again to continue reauthorizing this already-registered device. This is not a new device registration and does not use another device slot."],
+  ["online.device.reauthContinue", "Confirm and continue"],
+  ["online.device.reauthCancelled", "Cancelled — this device was not reauthorized"],
+  ["license.plan.badq", "BAD_Q — one-time purchase, lifetime, 1 device"],
+  ["license.plan.plus", "PLUS — monthly, 2 devices, automatic Owner Cloud Sync"],
+  ["license.plan.pro", "PRO — monthly, 3 devices + Member Portal"],
+  ["license.plan.founder", "Founder — all top-tier features, lifetime"],
+  ["license.plan.legacy", "Early Access"],
+  ["license.plan.none", "No plan"],
+  ["license.state.notStarted", "Trial not started"],
+  ["license.state.trial", "Trial"],
+  ["license.state.active", "Active"],
+  ["license.state.grace", "Grace period"],
+  ["license.state.expired", "Expired"],
+  ["license.state.revoked", "Revoked"],
+  ["license.state.released", "Released for transfer"],
+  ["license.state.unverified", "Not verified with the server"],
+  ["license.state.invalid", "Licence data invalid"],
+  ["license.state.none", "No entitlement"],
+  ["license.lifetime", "Lifetime — no expiry"],
+  ["license.trialLeft", "Trial: {days} day(s) left"],
+  ["license.validUntil", "Valid until {date}"],
+  ["license.endedOn", "Ended on {date}"],
+  ["license.renewalAuto", "Renews automatically on {date}"],
+  ["license.renewalManual", "Does not renew automatically"],
+  ["license.renewalCancels", "Renewal cancelled — ends {date}"],
+  ["license.deviceCapacity", "Up to {max} device(s)"],
+  ["license.localNote", "Your data on this device is never deleted or hidden, even if the plan expires or is revoked."],
+  ["license.sync.planNo", "This plan keeps data on the device only (move devices with Backup/Restore)."],
+  ["license.sync.off", "Cloud Sync is off — it needs a plan verified with the server."],
+  ["license.sync.idle", "Automatic sync: up to date"],
+  ["license.sync.syncing", "Automatic sync: syncing"],
+  ["license.sync.offline", "Automatic sync: offline — resumes when you are back online"],
+  ["license.sync.retrying", "Automatic sync: will retry automatically"],
+  ["license.sync.conflict", "Automatic sync: some records conflict — choose how to resolve them"],
+  ["license.sync.paused", "Automatic sync: paused"],
+  ["license.sync.disabled", "Automatic sync: not ready (link the group to Cloud and authorize this device)"],
+  ["license.sync.reviewRequired", "Automatic sync: waiting for your review (restore / mass deletion)"],
+  ["license.sync.initialDecisionRequired", "Automatic sync: waiting for you to choose how to start"],
+  ["license.sync.error", "Automatic sync: error"],
+  ["license.sync.pendingService", "Automatic sync: the service is not enabled yet. All your data stays on this device."],
+  ["license.local.title", "BAD_Q licence on this device"],
+  ["license.local.planLine", "BAD_Q — one-time THB {price}, lifetime (a 72-hour trial is available once per account)"],
+  ["license.local.noCloud", "Cloud Sync and Member Portal are not included"],
+  ["license.local.trialEnds", "Trial ends {date}"],
+  ["license.local.clockNote", "The device clock went backwards — the latest time ever seen is used so the trial cannot be extended (offline checks are advisory only)."],
+  ["license.local.notActivatedNote", "Not activated — sign in, register this device, then start the 72-hour trial or redeem a purchase code. You can still view, back up and restore your data."],
+  ["license.local.checkingNote", "Checking the licence stored on this device."],
+  ["license.local.trialNote", "The 72-hour trial is counted by the server once per account and works offline until it ends. Turning the clock back does not extend it."],
+  ["license.local.trialExpiredNote", "Trial ended — new games cannot be started, but all your data is kept, you can view / back up / restore, and games in progress can be finished. Redeem a purchase code to continue."],
+  ["license.local.activeNote", "Activated. Works offline indefinitely with no further internet checks. To move devices: Backup/Restore, and ask Admin to unlock the old device first."],
+  ["license.local.revokedNote", "The server reported the licence revoked — new games cannot be started. Your local data is intact. Contact Admin."],
+  ["license.local.deviceReleasedNote", "Admin unlocked this device (for example a device transfer) — new games cannot be started. Your data is intact; use a backup file to move to the new device."],
+  ["license.local.invalidNote", "The licence stored on this device failed verification — group, player and finance data are unaffected. Connect to the internet and refresh the licence, or recover the licence status."],
+  ["license.local.signInHint", "Sign in to the Owner account below to activate (internet is only needed for the first activation)."],
+  ["license.local.onlineUnavailable", "Online services are not available yet — internet is required for the first activation."],
+  ["license.local.registerDevice", "Register this device"],
+  ["license.local.startTrial", "Start 72-hour trial"],
+  ["license.local.redeem", "Redeem purchase code"],
+  ["license.local.refresh", "Refresh licence"],
+  ["license.local.migrate", "Upgrade device protocol"],
+  ["license.local.recover", "Recover licence status"],
+  ["license.local.confirm", "Confirm"],
+  ["license.local.cancel", "Cancel"],
+  ["license.local.codePlaceholder", "Code received from Admin"],
+  ["license.local.enrollConfirm", "Register “{device}” as this account's only authorized device? BAD_Q allows 1 device; moving devices needs Admin to unlock the old one first."],
+  ["license.local.trialConfirm", "Start the 72-hour trial? It can be started once per account and the server starts the clock immediately."],
+  ["license.local.migrateConfirm", "Upgrade the device protocol: a new device ID is created for this device (this is not a new account). Your local data and the revoked history of the old devices are kept. Only possible after Admin unlocked every old device."],
+  ["license.err.offline", "No internet — it is only needed to activate. Your local data is not affected."],
+  ["license.err.unavailable", "The server is not responding. Try again; nothing was deleted."],
+  ["license.err.enrollNeeded", "Register this device first."],
+  ["license.err.deviceLimit", "This account already has its 1 authorized device — ask Admin to unlock the old device first."],
+  ["license.err.unlockRequired", "Old authorized devices still exist — ask Admin to unlock them first. No code or trial was used."],
+  ["license.err.migrationRequired", "This account has legacy device history — after Admin unlocked every old device, use Upgrade device protocol (a separate confirmation)."],
+  ["license.err.reauth", "Please confirm your password again (within 5 minutes) to continue."],
+  ["license.err.sessionChanged", "The signed-in account changed during the action — nothing was sent. Try again."],
+  ["license.err.accountMismatch", "The account does not match what the server returned — stopped for safety."],
+  ["license.err.emailNotVerified", "Verify the account email first."],
+  ["license.err.contractInvalid", "The server answer did not match the expected format — stopped for safety; no entitlement changed."],
+  ["license.err.keyUntrusted", "The licence is signed with a key this app does not trust — rejected."],
+  ["license.err.signatureInvalid", "The licence signature is invalid — rejected."],
+  ["license.err.licenseRejected", "The licence does not match this account / device / environment — rejected."],
+  ["license.err.revoked", "The licence was revoked. Contact Admin."],
+  ["license.err.expired", "The licence has expired."],
+  ["license.err.deviceReleased", "This device was unlocked by Admin."],
+  ["license.err.grantRequired", "This account has no trial or purchased licence yet — start the trial or redeem a code first."],
+  ["license.err.codeInvalid", "The code is invalid or cannot be used by this account."],
+  ["license.err.inProgress", "A registration for another account is in progress — wait for it to finish."],
+  ["license.err.generic", "That did not work. Your local data is not affected."],
+  ["license.gate.title", "Read-only mode"],
+  ["license.gate.banner", "New games cannot be started until a valid BAD_Q licence exists. Data, history, finance and Backup/Restore work as usual, games in progress can be finished, and nothing is deleted."],
+  ["license.gate.openLicense", "Open licence"],
+  ["license.gate.openBackup", "Back up data"],
+  ["license.gate.blocked", "New games cannot be started — no valid BAD_Q licence yet (all your data is kept; view / back up / restore as usual)."],
+  ["license.state.notActivated", "Not activated"],
+  ["license.state.trialExpired", "Trial ended"],
+  ["license.state.deviceReleased", "Device unlocked"],
+  ["license.state.checking", "Checking"],
   ["online.device.registerAction", "Register this device"],
   ["online.device.registerRetry", "Try registering again"],
   ["online.device.registering", "Registering…"],
   ["online.device.nameLabel", "Device name"],
   ["online.device.authorizedThis", "This device is registered and can use online features"],
   ["online.device.limitTitle", "All {max} devices are registered"],
-  ["online.device.limitBody", "This account already has the maximum number of devices. To use this one, choose another device to remove yourself — BadQ never removes or replaces a device automatically."],
+  ["online.device.limitBody", "This account already has the maximum number of devices (devices from closed Private/Incognito windows still count until you remove them). To use this one, choose another device to remove yourself — BadQ never removes or replaces a device automatically."],
   ["online.device.manage", "Manage devices"],
   ["online.device.manageHint", "This account can use up to {max} devices. Removing a device does not delete the data on it."],
   ["online.device.revokedTitle", "This device was removed from the account"],
@@ -4993,7 +5239,7 @@ const en = defineMessages("en", [
   ["online.device.listError", "Could not load the device list"],
   ["online.device.listEmpty", "No devices registered yet"],
   ["online.device.platformWeb", "Web/PWA"],
-  ["online.error.deviceLimit", "This account already has the maximum number of devices — remove another device first"],
+  ["online.error.deviceLimit", "2 devices are already authorized.\nRevoke one authorized device before reauthorizing this device."],
   ["online.error.deviceRevoked", "This device was removed from the account"],
   ["online.error.deviceAuth", "The server did not confirm this device"],
   ["online.error.deviceEnrollmentRequired", "Register this device first"],
@@ -5001,6 +5247,8 @@ const en = defineMessages("en", [
   ["online.error.deviceCredential", "Could not keep the device key on this device (the browser may be blocking storage), so online features are off"],
   ["online.error.recentAuth", "Enter your password again to confirm your identity before doing this"],
   ["online.error.deviceNotFound", "That device is not in the list"],
+  ["online.error.sessionChanged", "The signed-in account changed during this action, so the registration was cancelled — nothing was changed"],
+  ["online.error.enrollmentInProgress", "A device registration is already in progress. Please wait"],
   ["online.error.accountMismatch", "This account differs from the one the groups on this device were linked to, so online features stay off (your data on this device is unaffected)"],
   ["online.error.environmentMismatch", "The online environment setting is invalid, so online features are off"],
   ["online.error.contractInvalid", "The server returned unexpected data, so online features are off"],
@@ -5045,6 +5293,10 @@ const en = defineMessages("en", [
   ["online.groupLink.unlink", "Unlink"],
   ["online.groupLink.unlinkConfirm", "Unlink this local group from its Cloud group? Local BadQ data will not be deleted or changed."],
   ["online.groupLink.createConfirm", "Create a new Cloud Badminton Group named \"{name}\" and link this local group to it?"],
+  ["online.groupConfirm.createTitle", "Confirm creating a Cloud group"],
+  ["online.groupConfirm.unlinkTitle", "Confirm unlinking"],
+  ["online.groupConfirm.createCancelled", "Cancelled — no Cloud group was created"],
+  ["online.groupConfirm.unlinkCancelled", "Cancelled — the group link is unchanged"],
   ["online.groupLink.linked", "Linked to {name}"],
   ["online.groupLink.unlinked", "This local group is not linked"],
   ["online.groupLink.validated", "Link verified"],
@@ -5431,7 +5683,7 @@ function createI18n(locale = DEFAULT_LOCALE, { timeZone = DEFAULT_TIME_ZONE } = 
   });
 })();
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-const APP_VERSION = "1.15.0";
+const APP_VERSION = "1.15.6";
 const LEVELS = ["R", "BG1", "BG2", "BG3", "S-", "S", "N-", "N", "P-", "P", "C"];
 const WEIGHT = {
   R: 1,
@@ -8743,6 +8995,7 @@ function computeBill(players, settings, finishedMatches) {
   const matches = finishedMatches || [];
   const doublesRate = Number(settings.shuttleDoubles ?? settings.shuttle) || 0;
   const singlesRate = Number(settings.shuttleSingles ?? settings.shuttle) || 0;
+  const perShuttleMode = settings.shuttleBillingMode === "perShuttle"; // absent / anything else => per completed game (legacy)
   const ledgerGames = completedGamesByPlayer(matches); // v1.12.38: games = completed-match ledger, never the p.games cache
   return payers.map(p => {
     const court = perPerson ? settings.perPersonRate || 0 : splitEq ? splitSummary.charge : settings.court || 0;
@@ -8750,15 +9003,24 @@ function computeBill(players, settings, finishedMatches) {
     // single cumulative p.games counter — a player with 3 doubles + 2 singles games in the SAME session
     // must be billed 3×doublesRate + 2×singlesRate, not 5×one-rate (see spec's worked example: ฿245).
     let doublesGames = 0,
-      singlesGames = 0;
+      singlesGames = 0,
+      doublesUnits = 0,
+      singlesUnits = 0; // *Units = what the rate multiplies: games (perGame) or actual shuttles (perShuttle)
     if (!perPerson && !splitEq) {
       for (const m of matches) {
         if (!m) continue;
         if (!((m.teamA || []).includes(p.id) || (m.teamB || []).includes(p.id))) continue;
-        if (resolveMatchType(m) === "singles") singlesGames++;else doublesGames++;
+        const units = perShuttleMode ? matchShuttleUsed(m) : 1;
+        if (resolveMatchType(m) === "singles") {
+          singlesGames++;
+          singlesUnits += units;
+        } else {
+          doublesGames++;
+          doublesUnits += units;
+        }
       }
     }
-    const shuttle = perPerson || splitEq ? 0 : doublesGames * doublesRate + singlesGames * singlesRate;
+    const shuttle = perPerson || splitEq ? 0 : doublesUnits * doublesRate + singlesUnits * singlesRate;
     const other = otherShare;
     const discount = p.discount || 0; // per-person discount, entered manually in the player's summary detail
     const wheelDiscount = p.wheelDiscount || 0; // locked discount won from the spin wheel (not manually editable)
@@ -8791,6 +9053,9 @@ function computeBill(players, settings, finishedMatches) {
     const outDiscount = hasFrozenPayment ? fb.eDiscount || 0 : discount;
     const outWheelDiscount = hasFrozenPayment ? fb.eWheelDiscount || 0 : wheelDiscount;
     const outCarriedInDiscount = hasFrozenPayment ? fb.eCarriedInDiscount || 0 : carriedInDiscount;
+    const outDoublesUnits = hasFrozenPayment ? fb.doublesUnits != null ? fb.doublesUnits : fb.doublesGames || 0 : doublesUnits;
+    const outSinglesUnits = hasFrozenPayment ? fb.singlesUnits != null ? fb.singlesUnits : fb.singlesGames || 0 : singlesUnits;
+    const outPerShuttle = hasFrozenPayment ? fb.perShuttle === true : perShuttleMode;
     const outDoublesGames = hasFrozenPayment ? fb.doublesGames || 0 : doublesGames;
     const outSinglesGames = hasFrozenPayment ? fb.singlesGames || 0 : singlesGames;
     const outDoublesRate = hasFrozenPayment ? fb.doublesRate || 0 : doublesRate;
@@ -8809,6 +9074,9 @@ function computeBill(players, settings, finishedMatches) {
       total,
       isOwnerExempt,
       doublesGames: outDoublesGames,
+      doublesUnits: outDoublesUnits,
+      singlesUnits: outSinglesUnits,
+      perShuttle: outPerShuttle,
       singlesGames: outSinglesGames,
       doublesRate: outDoublesRate,
       singlesRate: outSinglesRate
@@ -8895,7 +9163,10 @@ function togglePaidTransition(players, playerId, ctx) {
           doublesGames: b.doublesGames,
           singlesGames: b.singlesGames,
           doublesRate: b.doublesRate,
-          singlesRate: b.singlesRate
+          singlesRate: b.singlesRate,
+          doublesUnits: b.doublesUnits,
+          singlesUnits: b.singlesUnits,
+          perShuttle: b.perShuttle === true
         }
       };
     }
@@ -12182,6 +12453,11 @@ function ImageCropper({
 // (and mutates) the same wheelPrizes array reference.
 function getDefaultSettings() {
   return {
+    // P0 Shuttlecock Billing Modes (shipped in 1.15.6): how the existing shuttle SELLING rate is applied to player charges.
+    // "perShuttle" (DEFAULT for NEW groups / fresh installs) charges rate x the match's actual shuttleUsed; "perGame" charges 1 rate per completed
+    // match. Saved settings that LACK this field are LEGACY and are normalised to "perGame" by every load path (see legacyShuttleBillingMode) so
+    // nobody's billing changes silently. Never affects cost.
+    shuttleBillingMode: "perShuttle",
     // v1.12.51 (Promotion & Loyalty Foundation): GROUP-SPECIFIC campaign storage, additive inside this same
     // existing `settings` object per spec section 1 — travels for free through the existing Group Default
     // (groupDefaults[session.name]), Backup/Restore, and boot-load plumbing, exactly like every other
@@ -12419,6 +12695,11 @@ function inferAdvancedFeatureFlags(rawSettings, rawActiveTournament, rawTourname
 }
 // v1.11.7 (Part M) / v1.11.12: backward-compatible settings defaults — old saved settings objects predate
 // these fields; backfill them without touching any existing customized value.
+// Explicit saved choice always wins; a saved settings object WITHOUT a valid choice is legacy => "perGame" (unchanged billing).
+function legacyShuttleBillingMode(saved) {
+  const v = saved && typeof saved === "object" ? saved.shuttleBillingMode : undefined;
+  return v === "perShuttle" ? "perShuttle" : "perGame";
+}
 function normSettings(s) {
   const base = s && typeof s === "object" ? s : {};
   const amm = Number(base.averageMatchMinutes);
@@ -12460,6 +12741,8 @@ function normSettings(s) {
   return {
     ...getDefaultSettings(),
     ...base,
+    shuttleBillingMode: s && typeof s === "object" ? legacyShuttleBillingMode(base) : "perShuttle",
+    // saved object: explicit value kept, absent / corrupt => legacy "perGame"; no saved settings at all => new default
     realtimeCourtAvailability: base.realtimeCourtAvailability === true,
     // v1.14.5: anything but an explicit true (absent / legacy / corrupt) => OFF
     shuttleEco: {
@@ -13077,7 +13360,8 @@ function migrateBackupData(parsed) {
   data.mode = data.mode || "doubles";
   data.settings = {
     ...getDefaultSettings(),
-    ...(data.settings || {})
+    ...(data.settings || {}),
+    shuttleBillingMode: data.settings && typeof data.settings === "object" ? legacyShuttleBillingMode(data.settings) : "perShuttle"
   };
   // v1.12.7 (fix 2): the spread above (getDefaultSettings() as base, then data.settings on top) already
   // makes a genuinely-missing levelPresetId key resolve to getDefaultSettings()'s new "badweb-central"
@@ -18871,6 +19155,53 @@ function AppInner() {
     i18n
   } = useBadQI18n();
   const t = i18n.t;
+  // BAD_Q Offline gameplay gate: a licence that is missing / expired / revoked / released only stops STARTING new games. Everything else
+  // (data, history, finance, Backup/Restore, finishing games already in progress) stays available and nothing is ever deleted.
+  const [licenseRestricted, setLicenseRestricted] = useState(false);
+  useEffect(() => {
+    // the licence module is a deferred ES module: it may not exist yet at first render, so resolve it lazily and re-subscribe when the bridge announces itself
+    let un = () => {};
+    const upd = () => {
+      try {
+        const api = window.BadQLocalLicenseApi;
+        if (api) setLicenseRestricted(!api.canStartGames());
+      } catch (e) {}
+    };
+    const sub = () => {
+      try {
+        un();
+      } catch (e) {}
+      un = () => {};
+      try {
+        const api = window.BadQLocalLicenseApi;
+        if (api) un = api.subscribe(upd) || (() => {});
+      } catch (e) {}
+      upd();
+    };
+    sub();
+    const id = setInterval(() => {
+      if (!window.BadQLocalLicenseApi) return;
+      upd();
+    }, 5000);
+    window.addEventListener("badq:commercial-bridge-ready", sub);
+    return () => {
+      try {
+        un();
+      } catch (e) {}
+      clearInterval(id);
+      window.removeEventListener("badq:commercial-bridge-ready", sub);
+    };
+  }, []);
+  const licenseGateBlocks = () => {
+    const api = window.BadQLocalLicenseApi;
+    if (api && api.canStartGames() === false) {
+      try {
+        alert(t("license.gate.blocked"));
+      } catch (e) {}
+      return true;
+    }
+    return false;
+  };
   // v1.12.44 (Localization Closure): count-aware translation (.one/.other catalog variants — see
   // src/i18n/index.mjs's translateCount), threaded the same way as `t` above, only into the surfaces this
   // phase actually wires up (Game tab's session-repeat warnings so far).
@@ -19805,6 +20136,8 @@ function AppInner() {
       setSettings(d => ({
         ...d,
         ...s.settings,
+        shuttleBillingMode: legacyShuttleBillingMode(s.settings),
+        // saved settings without the field keep legacy per-game billing
         tournamentEnabled: inferred.tournamentEnabled,
         wheelEnabled: inferred.wheelEnabled,
         wheelPrizes: normWheelPrizes(s.settings.wheelPrizes && s.settings.wheelPrizes.length ? s.settings.wheelPrizes : d.wheelPrizes)
@@ -22108,6 +22441,98 @@ function AppInner() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Full Owner Sync host (PLUS / PRO / FOUNDER). The sync engine reads ONLY the durable PRIMARY bg-v11 state and changes local data ONLY
+  // through the existing verified Restore pipeline (pre-restore safety snapshot + Undo), never by mutating React state directly.
+  // Without a registered host every engine call fails closed. Gameplay never waits for it.
+  useEffect(() => {
+    const host = {
+      async readDurableSnapshot() {
+        if (restoreFenceRef.current) return {
+          ok: false,
+          code: "durable-snapshot-unavailable"
+        };
+        try {
+          const r = await window.storage.getPrimaryFirst("bg-v11");
+          const parsed = r && r.value ? JSON.parse(r.value) : null;
+          if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.players)) return {
+            ok: false,
+            code: "durable-snapshot-unavailable"
+          };
+          const epoch = typeof parsed.restoreEpoch === "number" && Number.isSafeInteger(parsed.restoreEpoch) && parsed.restoreEpoch > 0 ? parsed.restoreEpoch : 0;
+          return {
+            ok: true,
+            state: parsed,
+            restoreEpoch: epoch
+          };
+        } catch (e) {
+          return {
+            ok: false,
+            code: "durable-snapshot-unavailable"
+          };
+        }
+      },
+      async applyState({
+        state
+      }) {
+        if (restoreFenceRef.current) return {
+          ok: false,
+          code: "restore-in-progress"
+        };
+        try {
+          const live = {
+            ...(latestLiveStateRef.current || {}),
+            players: playersLatestRef.current,
+            history: historyLatestRef.current,
+            current: currentLatestRef.current,
+            journalReceipts: journalReceiptsLatestRef.current
+          };
+          const payload = buildBackupPayload({
+            ...live,
+            ...state
+          });
+          const checked = await validateBackupFile(serializeForPersist(payload));
+          if (!checked.ok) return {
+            ok: false,
+            code: "cloud-state-invalid"
+          };
+          const result = await applyRestore("replace", checked.backup);
+          return result && result.ok ? {
+            ok: true
+          } : {
+            ok: false,
+            code: result && result.reason || "local-apply-failed"
+          };
+        } catch (e) {
+          return {
+            ok: false,
+            code: "local-apply-failed"
+          };
+        }
+      }
+    };
+    window.BadQOwnerSyncHost = host;
+    return () => {
+      if (window.BadQOwnerSyncHost === host) delete window.BadQOwnerSyncHost;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Tell the (debounced, hash-diffing) Owner Sync engine that durable data may have changed. A no-op unless a PLUS/PRO/FOUNDER group is
+  // linked; the engine itself coalesces bursts (no per-keystroke traffic) and re-reads the durable snapshot, so a slightly early notify is safe.
+  useEffect(() => {
+    try {
+      const o = window.BadQCommercialBridge && window.BadQCommercialBridge.ownerSync;
+      if (o && typeof o.notifyChanged === "function") o.notifyChanged();
+    } catch (e) {}
+  }, [players, history, current, future, roundNo, courtCount, courtLabels, mode, settings, session, lockPairs, sessionHistory, generalExpenses, otherIncome, discountCredits, rewardHistory, activeTournament, tournamentHistory, groupDefaults, rankingConfigs]);
+  useEffect(() => {
+    const id = setInterval(() => {
+      try {
+        const o = window.BadQCommercialBridge && window.BadQCommercialBridge.ownerSync;
+        if (o && typeof o.notifyChanged === "function") o.notifyChanged();
+      } catch (e) {}
+    }, 45000);
+    return () => clearInterval(id);
+  }, []);
   const [addAttemptTick, setAddAttemptTick] = useState(0);
   // Phase 4A add-attempt settle: runs AFTER commit, observes the committed roster, releases reservations, starts photo work.
   useEffect(() => {
@@ -22909,6 +23334,7 @@ function AppInner() {
   const startGame = mid => {
     const m = current.find(x => x.id === mid);
     if (!m) return;
+    if (m.status === "next" && licenseGateBlocks()) return; // a game already playing/paused is never touched by the licence gate
     // v1.14.5: a NOT-YET-PLAYING game cannot be started on a court that is closed right now (real-time mode ON). A game that is
     // already playing/paused is never touched by this rule (resume does not pass through here).
     if (m.status === "next" && !courtAssignableNow(m.court)) {
@@ -23634,6 +24060,7 @@ function AppInner() {
     const current = currentLatestRef.current,
       players = playersLatestRef.current,
       history = historyLatestRef.current; // eslint-disable-line no-shadow
+    if (licenseGateBlocks()) return;
     if (!courtAssignableNow(court)) return; // v1.14.5: real-time mode ON and this court is closed right now — never receives a new game
     if (settings.pairingMode === "manual") {
       const nc = {
@@ -24743,6 +25170,7 @@ function AppInner() {
     setSettings(s => ({
       ...s,
       ...bundle.settings,
+      shuttleBillingMode: legacyShuttleBillingMode(bundle.settings),
       wheelPrizes: (bundle.settings.wheelPrizes || []).map(wp => ({
         ...wp
       }))
@@ -26923,7 +27351,63 @@ function AppInner() {
         fontSize: 12,
         fontWeight: 800
       }
-    }, t("app.updateNow"))), showBackupReminder && /*#__PURE__*/React.createElement("div", {
+    }, t("app.updateNow"))), licenseRestricted && /*#__PURE__*/React.createElement("div", {
+      "data-testid": "license-gate-banner",
+      style: {
+        background: "#fff7e6",
+        border: "1px solid #f0c96b",
+        borderRadius: 12,
+        padding: "10px 11px",
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12.5,
+        fontWeight: 800
+      }
+    }, t("license.gate.title")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: T.muted,
+        marginTop: 2,
+        lineHeight: 1.6
+      }
+    }, t("license.gate.banner")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        marginTop: 7
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      "data-testid": "license-gate-open",
+      onClick: () => {
+        setTab("settings");
+        setSettingsAutoOpen("online");
+      },
+      style: {
+        padding: "7px 13px",
+        borderRadius: 9,
+        background: T.green,
+        border: "none",
+        color: "#fff",
+        fontSize: 12,
+        fontWeight: 800
+      }
+    }, t("license.gate.openLicense")), /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        setTab("settings");
+        setSettingsAutoOpen("backup");
+      },
+      style: {
+        padding: "7px 13px",
+        borderRadius: 9,
+        background: T.surface2,
+        border: `1px solid ${T.border}`,
+        color: T.text,
+        fontSize: 12,
+        fontWeight: 700
+      }
+    }, t("license.gate.openBackup")))), showBackupReminder && /*#__PURE__*/React.createElement("div", {
       style: {
         background: "#fff7e6",
         border: "1px solid #f0c96b",
@@ -32388,12 +32872,16 @@ const ONLINE_STATUS = {
   // verified Owner + this device authorized (server-confirmed)
   NEEDS_DEVICE: "needs_device",
   // verified Owner, this installation not registered yet (explicit Owner action)
+  REAUTH: "reauth",
+  // an already-confirmed device REAUTHORIZATION is waiting for the Owner's recent sign-in (NOT a new-device registration)
   DEVICE_LIMIT: "device_limit",
   // 2 devices already authorized
   DEVICE_REVOKED: "device_revoked",
   DEVICE_UNAUTHORIZED: "device_unauthorized",
   MISMATCH: "mismatch",
   // a different Owner than the one this device's cloud links belong to
+  NO_ENTITLEMENT: "no_entitlement",
+  // verified Owner + authorized device, but the server grants no paid Online access (none / expired / revoked / invalid)
   ERROR: "error"
 };
 const ONLINE_STATUS_META = {
@@ -32427,6 +32915,11 @@ const ONLINE_STATUS_META = {
     label: "ต้องลงทะเบียนอุปกรณ์",
     color: "#b45309"
   },
+  [ONLINE_STATUS.REAUTH]: {
+    icon: "🟠",
+    label: "ต้องยืนยันตัวตนอีกครั้ง",
+    color: "#b45309"
+  },
   [ONLINE_STATUS.DEVICE_LIMIT]: {
     icon: "🟠",
     label: "ครบจำนวนอุปกรณ์แล้ว",
@@ -32447,27 +32940,43 @@ const ONLINE_STATUS_META = {
     label: "คนละบัญชีกับที่เชื่อมไว้",
     color: T.accent
   },
+  [ONLINE_STATUS.NO_ENTITLEMENT]: {
+    icon: "🟠",
+    label: "ยังไม่มีสิทธิ์ใช้งานออนไลน์",
+    color: "#b45309"
+  },
   [ONLINE_STATUS.ERROR]: {
     icon: "🔴",
     label: "เกิดข้อผิดพลาด",
     color: T.accent
   }
 };
+// Early Access: a SERVER-VERIFIED lack of paid Online access (never an offline / unverifiable state, which is not a denial).
+const ENTITLEMENT_DENIED_STATUSES = ["none", "expired", "revoked", "invalid"];
+function entitlementDenied(entitlement) {
+  return !!(entitlement && entitlement.fromServer === true && ENTITLEMENT_DENIED_STATUSES.includes(entitlement.status));
+}
+function entitlementGranted(entitlement) {
+  return !!(entitlement && entitlement.fromServer === true && entitlement.status === "granted");
+}
 // Pure function — the ONE place that decides which status applies (both the Settings row and the sheet use it).
 function deriveOnlineStatus({
   available,
   user,
   device,
-  isOffline
+  isOffline,
+  entitlement
 }) {
   if (!available || !user) return ONLINE_STATUS.NOT_CONNECTED;
   if (!user.emailVerified) return ONLINE_STATUS.UNVERIFIED;
   switch (device && device.status) {
     case "authorized":
-      return ONLINE_STATUS.ACTIVE;
+      return entitlementDenied(entitlement) ? ONLINE_STATUS.NO_ENTITLEMENT : ONLINE_STATUS.ACTIVE;
+    case "reauth_required":
+      return device.reauthIntent === "reauthorize" ? ONLINE_STATUS.REAUTH : ONLINE_STATUS.NEEDS_DEVICE;
+    // reauthorizing a registered device is never "registration needed"
     case "needs_enrollment":
     case "enrolling":
-    case "reauth_required":
       return ONLINE_STATUS.NEEDS_DEVICE;
     case "limit_reached":
       return ONLINE_STATUS.DEVICE_LIMIT;
@@ -32493,10 +33002,12 @@ const ONLINE_STATUS_LABEL_KEY = {
   [ONLINE_STATUS.UNVERIFIED]: "online.status.unverified",
   [ONLINE_STATUS.ACTIVE]: "online.status.online",
   [ONLINE_STATUS.NEEDS_DEVICE]: "online.status.needsDevice",
+  [ONLINE_STATUS.REAUTH]: "online.status.reauthRequired",
   [ONLINE_STATUS.DEVICE_LIMIT]: "online.status.deviceLimit",
   [ONLINE_STATUS.DEVICE_REVOKED]: "online.status.deviceRevoked",
   [ONLINE_STATUS.DEVICE_UNAUTHORIZED]: "online.status.deviceUnauthorized",
   [ONLINE_STATUS.MISMATCH]: "online.status.mismatch",
+  [ONLINE_STATUS.NO_ENTITLEMENT]: "online.status.noEntitlement",
   [ONLINE_STATUS.ERROR]: "online.status.error"
 };
 // Firebase/Auth/Cloud error codes -> localized display copy. The error code remains the sole input to this
@@ -32560,7 +33071,11 @@ function cloudErrorMessage(e, tr) {
     "device-contract-invalid": "online.error.contractInvalid",
     offline: "online.error.network",
     "verification-unavailable": "online.error.serverUnavailable",
-    "session-unavailable": "online.error.unauthenticated"
+    "session-unavailable": "online.error.unauthenticated",
+    // v1.15.4 (P3) — enrollment single-flight / session safety.
+    "session-changed": "online.error.sessionChanged",
+    "enrollment-in-progress": "online.error.enrollmentInProgress",
+    "enrollment-cancelled": "online.device.registerCancelled"
   };
   if (tr && code && MAP[code]) return tr(MAP[code]);
   return tr ? tr("online.error.generic") : e && e.message || "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
@@ -32625,9 +33140,13 @@ function useCommercialOwner(commercial) {
   }, [available, commercial]);
   useEffect(() => {
     if (!available || !commercial.onDeviceStateChange) return;
-    const unsub = commercial.onDeviceStateChange(value => setDevice(value || {
-      status: "signed_out"
-    }));
+    // a device-state change also follows a verification reload, so re-read the user snapshot (keeps the Settings row from showing a stale "email not verified")
+    const unsub = commercial.onDeviceStateChange(value => {
+      setDevice(value || {
+        status: "signed_out"
+      });
+      if (commercial.getCurrentOwner) setUser(snapshotOwner(commercial.getCurrentOwner()));
+    });
     return () => {
       try {
         unsub && unsub();
@@ -32655,6 +33174,665 @@ function useCommercialOwner(commercial) {
     refreshUser
   };
 }
+// Server entitlement snapshot (separate from identity + device state). Presentation only.
+function useCommercialEntitlement(commercial) {
+  const available = !!(commercial && commercial.available);
+  const read = () => available && commercial.getEntitlementState ? commercial.getEntitlementState() : null;
+  const [entitlement, setEntitlement] = useState(read);
+  useEffect(() => {
+    if (!available || !commercial.onEntitlementChange) {
+      setEntitlement(null);
+      return;
+    }
+    const unsub = commercial.onEntitlementChange(value => setEntitlement(value || null));
+    return () => {
+      try {
+        unsub && unsub();
+      } catch (e) {}
+    };
+  }, [available, commercial]);
+  return entitlement;
+}
+// Plan / licence status (BAD_Q, PLUS, PRO, FOUNDER_ALL_ACCESS). Presentation only: the view is derived by the bridge from the server-verified
+// entitlement; this component never grants anything, never blocks gameplay and never touches local data.
+function useCommercialLicenseView(commercial, entitlement) {
+  const available = !!(commercial && commercial.available && commercial.getLicenseView);
+  const read = () => {
+    try {
+      return available ? commercial.getLicenseView() : null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const [view, setView] = useState(read);
+  const [syncStatus, setSyncStatus] = useState(() => {
+    try {
+      return commercial && commercial.ownerSync ? commercial.ownerSync.getStatus() : null;
+    } catch (e) {
+      return null;
+    }
+  });
+  useEffect(() => {
+    setView(read());
+  }, [entitlement, available]);
+  useEffect(() => {
+    const id = setInterval(() => setView(read()), 60000); // expiry is judged against the (skew-corrected) clock; it can only tighten a grant
+    return () => clearInterval(id);
+  }, [available]);
+  useEffect(() => {
+    if (!commercial || !commercial.ownerSync) return undefined;
+    const unsub = commercial.ownerSync.subscribe(v => setSyncStatus(v));
+    return () => {
+      try {
+        unsub && unsub();
+      } catch (e) {}
+    };
+  }, [commercial]);
+  return {
+    view,
+    syncStatus
+  };
+}
+const LICENSE_PLAN_KEY = {
+  BAD_Q: "badq",
+  PLUS: "plus",
+  PRO: "pro",
+  FOUNDER_ALL_ACCESS: "founder",
+  EARLY_ACCESS_LEGACY: "legacy"
+};
+const licenseCamel = v => String(v).replace(/[-_]([a-z])/g, (m, c) => c.toUpperCase());
+function LicenseStatusCard({
+  view,
+  syncStatus,
+  t,
+  fmtDate
+}) {
+  if (!view || !view.planId) return null;
+  const date = iso => {
+    try {
+      return fmtDate ? fmtDate(Date.parse(iso)) : new Date(iso).toLocaleDateString();
+    } catch (e) {
+      return iso;
+    }
+  };
+  const live = view.state === "active" || view.state === "trial" || view.state === "grace";
+  const lines = [];
+  if (view.lifetime && view.state === "active") lines.push(t("license.lifetime"));else if (view.state === "trial" && view.trialRemainingMs !== null) lines.push(t("license.trialLeft", {
+    days: Math.max(1, Math.ceil(view.trialRemainingMs / 86400000))
+  }));else if (view.validUntil && view.state === "expired") lines.push(t("license.endedOn", {
+    date: date(view.validUntil)
+  }));else if (view.validUntil && live) lines.push(t("license.validUntil", {
+    date: date(view.validUntil)
+  }));
+  if (view.renewal && live) lines.push(view.renewal.cancelAtPeriodEnd ? t("license.renewalCancels", {
+    date: date(view.validUntil || view.renewal.nextRenewalAt)
+  }) : view.renewal.autoRenew && view.renewal.nextRenewalAt ? t("license.renewalAuto", {
+    date: date(view.renewal.nextRenewalAt)
+  }) : t("license.renewalManual"));
+  lines.push(t("license.deviceCapacity", {
+    max: view.deviceCapacity
+  }));
+  let syncLine = null;
+  if (view.planId === "BAD_Q") syncLine = t("license.sync.planNo");else if (!view.ownerCloudSync) syncLine = t("license.sync.off");else if (syncStatus) syncLine = syncStatus.reason === "transport-pending-contract" ? t("license.sync.pendingService") : t("license.sync." + licenseCamel(syncStatus.state === "idle" && !syncStatus.initialized ? "disabled" : syncStatus.state || "disabled"));
+  return /*#__PURE__*/React.createElement("div", {
+    "data-testid": "license-card",
+    "data-plan": view.planId,
+    "data-state": view.state,
+    style: {
+      padding: 12,
+      borderRadius: 11,
+      background: T.surface,
+      border: `1px solid ${live ? T.border : "#b45309"}`,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    "data-testid": "license-plan",
+    style: {
+      fontSize: 13,
+      fontWeight: 800,
+      color: T.text,
+      flex: 1
+    }
+  }, t("license.plan." + LICENSE_PLAN_KEY[view.planId])), /*#__PURE__*/React.createElement("div", {
+    "data-testid": "license-state",
+    style: {
+      fontSize: 11,
+      fontWeight: 800,
+      color: live ? T.green : "#b45309"
+    }
+  }, t("license.state." + licenseCamel(view.state)))), lines.map((l, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6
+    }
+  }, l)), syncLine && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "license-sync",
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6
+    }
+  }, syncLine), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: T.muted,
+      lineHeight: 1.6,
+      marginTop: 4
+    }
+  }, t("license.localNote")));
+}
+// BAD_Q Offline licence card (contract /v2/offline). Presentation + EXPLICIT Owner actions only. Sign-in, device registration, the 72-hour
+// server trial, code redemption and the signed-licence fetch each need their own confirmation; nothing runs on login / reload / reconnect
+// (except the passive server-status check inside the bridge). Gameplay restrictions never delete or hide any local data.
+const LICENSE_ERR_KEY = {
+  offline: "offline",
+  "verification-unavailable": "unavailable",
+  "device-enrollment-required": "enrollNeeded",
+  DEVICE_LIMIT_REACHED: "deviceLimit",
+  "device-limit-reached": "deviceLimit",
+  "offline-device-unlock-required": "unlockRequired",
+  "device-policy-migration-required": "migrationRequired",
+  "recent-authentication-required": "reauth",
+  "session-changed": "sessionChanged",
+  "account-mismatch": "accountMismatch",
+  "email-not-verified": "emailNotVerified",
+  "offline-contract-invalid": "contractInvalid",
+  "license-key-untrusted": "keyUntrusted",
+  "license-signature-invalid": "signatureInvalid",
+  "license-revoked": "revoked",
+  "license-expired": "expired",
+  "offline-grant-required": "grantRequired",
+  "redeem-code-invalid": "codeInvalid",
+  "enrollment-in-progress": "inProgress",
+  "device-revoked": "deviceReleased",
+  "device-mismatch": "contractInvalid"
+};
+function LocalLicenseCard({
+  t,
+  user,
+  fmtDate
+}) {
+  const api = typeof window !== "undefined" ? window.BadQLocalLicenseApi : null;
+  const read = () => {
+    try {
+      return api ? api.view() : null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const [view, setView] = useState(read);
+  const [, bump] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [panel, setPanel] = useState(null); // null | enroll | trial | redeem | migrate | reauth
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [migration, setMigration] = useState(false);
+  const abortRef = useRef(null);
+  const pendingRef = useRef(null);
+  useEffect(() => {
+    if (!api) return undefined;
+    setView(read());
+    const un = api.subscribe(() => setView(read()));
+    const id = setInterval(() => setView(read()), 30000);
+    const h = () => bump(x => x + 1);
+    window.addEventListener("badq:commercial-bridge-ready", h);
+    return () => {
+      try {
+        un();
+      } catch (e) {}
+      clearInterval(id);
+      window.removeEventListener("badq:commercial-bridge-ready", h);
+    };
+  }, []);
+  if (!view || view.state === "not_configured") return null;
+  const offline = api.offline;
+  const signedIn = !!(user && user.emailVerified);
+  const st = view.state;
+  const live = st === "active" || st === "trial" || st === "checking";
+  const date = iso => {
+    try {
+      return fmtDate ? fmtDate(Date.parse(iso)) : new Date(iso).toLocaleString();
+    } catch (e) {
+      return iso;
+    }
+  };
+  const errText = e => {
+    const c = e && e.code ? e.code : "generic";
+    const k = LICENSE_ERR_KEY[c] || (/^license-/.test(c) ? "licenseRejected" : "generic");
+    return t("license.err." + k);
+  };
+  const run = async (fn, {
+    retryable = true
+  } = {}) => {
+    setBusy(true);
+    setMsg("");
+    try {
+      await fn();
+      setPanel(null);
+      setCode("");
+      setPassword("");
+      pendingRef.current = null;
+      setMigration(false);
+    } catch (e) {
+      const c = e && e.code;
+      if (c === "recent-authentication-required" && retryable) {
+        pendingRef.current = fn;
+        setPanel("reauth");
+      } else if (c === "device-policy-migration-required") {
+        setMigration(true);
+        setPanel(null);
+        setMsg(errText(e));
+      } else setMsg(errText(e));
+    }
+    setBusy(false);
+    setView(read());
+  };
+  const label = typeof describeThisDevice === "function" ? describeThisDevice(t) : "Web";
+  const doEnroll = migrate => run(() => {
+    const ac = new AbortController();
+    abortRef.current = ac;
+    return offline.enroll({
+      confirm: true,
+      label,
+      platform: "web",
+      expectedUid: user.uid,
+      signal: ac.signal,
+      migrateLegacy: migrate === true,
+      confirmLegacyMigration: migrate === true
+    });
+  });
+  const noteKey = {
+    not_activated: "notActivatedNote",
+    checking: "checkingNote",
+    trial: "trialNote",
+    trial_expired: "trialExpiredNote",
+    active: "activeNote",
+    revoked: "revokedNote",
+    device_released: "deviceReleasedNote",
+    invalid: "invalidNote"
+  }[st] || "notActivatedNote";
+  const btn = {
+    ...btnSecondary,
+    flex: "none",
+    padding: "9px 12px",
+    fontSize: 12.5
+  };
+  const btnP = {
+    ...btnPrimary,
+    flex: "none",
+    padding: "9px 12px",
+    fontSize: 12.5
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-card",
+    "data-state": st,
+    "data-restricted": view.restricted ? "1" : "0",
+    style: {
+      padding: 12,
+      borderRadius: 11,
+      background: T.surface,
+      border: `1px solid ${live ? T.border : "#b45309"}`,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 800,
+      color: T.text,
+      flex: 1
+    }
+  }, t("license.local.title")), /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-state",
+    style: {
+      fontSize: 11,
+      fontWeight: 800,
+      color: live ? T.green : "#b45309"
+    }
+  }, t("license.state." + licenseCamel(st)))), /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-plan",
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6
+    }
+  }, t("license.local.planLine", {
+    price: view.priceThb
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6
+    }
+  }, t("license.deviceCapacity", {
+    max: 1
+  }), " \xB7 ", t("license.local.noCloud")), st === "trial" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-days",
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6
+    }
+  }, t("license.local.trialEnds", {
+    date: date(view.trialEndsAt)
+  })), st === "trial_expired" && view.trialEndsAt && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6
+    }
+  }, t("license.endedOn", {
+    date: date(view.trialEndsAt)
+  })), st === "active" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6
+    }
+  }, t("license.lifetime")), view.clockRollbackDetected && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-clock",
+    style: {
+      fontSize: 11.5,
+      color: "#b45309",
+      lineHeight: 1.6
+    }
+  }, t("license.local.clockNote")), st === "invalid" && view.errorCode && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#b45309",
+      lineHeight: 1.6
+    }
+  }, view.errorCode), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6,
+      marginTop: 2
+    }
+  }, t("license.local." + noteKey)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: T.muted,
+      lineHeight: 1.6,
+      marginTop: 4
+    }
+  }, t("license.localNote")), msg && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-msg",
+    style: {
+      marginTop: 6,
+      fontSize: 12,
+      color: "#b45309"
+    }
+  }, msg), !signedIn && st !== "active" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-signin-hint",
+    style: {
+      marginTop: 6,
+      fontSize: 12,
+      color: T.muted
+    }
+  }, offline ? t("license.local.signInHint") : t("license.local.onlineUnavailable")), signedIn && offline && panel === null && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 8,
+      flexWrap: "wrap"
+    }
+  }, st !== "active" && /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-enroll",
+    disabled: busy,
+    onClick: () => {
+      setMsg("");
+      setPanel("enroll");
+    },
+    style: btn
+  }, t("license.local.registerDevice")), st !== "active" && /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-trial",
+    disabled: busy,
+    onClick: () => {
+      setMsg("");
+      setPanel("trial");
+    },
+    style: btnP
+  }, t("license.local.startTrial")), st !== "active" && /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-redeem",
+    disabled: busy,
+    onClick: () => {
+      setMsg("");
+      setPanel("redeem");
+    },
+    style: btnP
+  }, t("license.local.redeem")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-refresh",
+    disabled: busy,
+    onClick: () => run(() => offline.activateLicense()),
+    style: btn
+  }, t("license.local.refresh")), migration && /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-migrate",
+    disabled: busy,
+    onClick: () => {
+      setMsg("");
+      setPanel("migrate");
+    },
+    style: btnP
+  }, t("license.local.migrate"))), signedIn && offline && panel === "enroll" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-panel-enroll",
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.text,
+      lineHeight: 1.6
+    }
+  }, t("license.local.enrollConfirm", {
+    device: label
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-enroll-confirm",
+    disabled: busy,
+    onClick: () => doEnroll(false),
+    style: btnP
+  }, t("license.local.confirm")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-cancel",
+    onClick: () => {
+      try {
+        abortRef.current && abortRef.current.abort();
+      } catch (e) {}
+      setPanel(null);
+    },
+    style: btn
+  }, t("license.local.cancel")))), signedIn && offline && panel === "migrate" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-panel-migrate",
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.text,
+      lineHeight: 1.6
+    }
+  }, t("license.local.migrateConfirm")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-migrate-confirm",
+    disabled: busy,
+    onClick: () => doEnroll(true),
+    style: btnP
+  }, t("license.local.confirm")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-cancel",
+    onClick: () => setPanel(null),
+    style: btn
+  }, t("license.local.cancel")))), signedIn && offline && panel === "trial" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-panel-trial",
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.text,
+      lineHeight: 1.6
+    }
+  }, t("license.local.trialConfirm")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-trial-confirm",
+    disabled: busy,
+    onClick: () => run(() => offline.startTrial({
+      confirm: true,
+      expectedUid: user.uid
+    })),
+    style: btnP
+  }, t("license.local.confirm")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-cancel",
+    onClick: () => setPanel(null),
+    style: btn
+  }, t("license.local.cancel")))), signedIn && offline && panel === "redeem" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-panel-redeem",
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    "data-testid": "local-license-code",
+    value: code,
+    onChange: e => setCode(e.target.value),
+    placeholder: t("license.local.codePlaceholder"),
+    autoComplete: "off",
+    style: {
+      width: "100%",
+      boxSizing: "border-box",
+      padding: "9px 10px",
+      borderRadius: 9,
+      border: `1px solid ${T.border}`,
+      background: T.surface2,
+      color: T.text,
+      fontSize: 13
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-redeem-confirm",
+    disabled: busy || !code.trim(),
+    onClick: () => run(() => offline.redeem({
+      code,
+      confirm: true,
+      expectedUid: user.uid
+    })),
+    style: btnP
+  }, t("license.local.confirm")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-cancel",
+    onClick: () => setPanel(null),
+    style: btn
+  }, t("license.local.cancel")))), signedIn && offline && panel === "reauth" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "local-license-panel-reauth",
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.text,
+      lineHeight: 1.6
+    }
+  }, t("license.err.reauth")), /*#__PURE__*/React.createElement("input", {
+    "data-testid": "local-license-password",
+    type: "password",
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    placeholder: t("online.auth.password"),
+    style: {
+      width: "100%",
+      boxSizing: "border-box",
+      marginTop: 6,
+      padding: "9px 10px",
+      borderRadius: 9,
+      border: `1px solid ${T.border}`,
+      background: T.surface2,
+      color: T.text,
+      fontSize: 13
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-reauth-confirm",
+    disabled: busy || !password,
+    onClick: async () => {
+      setBusy(true);
+      setMsg("");
+      try {
+        await offline.reauthenticate(password);
+        const again = pendingRef.current;
+        setPassword("");
+        setBusy(false);
+        if (again) await run(again, {
+          retryable: false
+        });else setPanel(null);
+      } catch (e) {
+        setBusy(false);
+        setMsg(errText(e));
+      }
+    },
+    style: btnP
+  }, t("license.local.confirm")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      pendingRef.current = null;
+      setPanel(null);
+      setPassword("");
+    },
+    style: btn
+  }, t("license.local.cancel")))), st === "invalid" && /*#__PURE__*/React.createElement("button", {
+    "data-testid": "local-license-recover",
+    onClick: () => {
+      try {
+        api.recover();
+      } catch (e) {}
+      setView(read());
+    },
+    style: {
+      ...btn,
+      marginTop: 8
+    }
+  }, t("license.local.recover")));
+}
 // Friendly device name for the registration confirmation (no identifiers, no secrets).
 function describeThisDevice(t) {
   try {
@@ -32679,11 +33857,13 @@ function BadQOnlineNavRow({
     device,
     isOffline
   } = useCommercialOwner(commercial);
+  const entitlement = useCommercialEntitlement(commercial);
   const status = deriveOnlineStatus({
     available,
     user,
     device,
-    isOffline
+    isOffline,
+    entitlement
   });
   const meta = ONLINE_STATUS_META[status];
   return /*#__PURE__*/React.createElement("button", {
@@ -33129,7 +34309,24 @@ function BadQOnlineSheet({
   const [reauthPassword, setReauthPassword] = useState("");
   const [deviceErr, setDeviceErr] = useState("");
   const [revokedConfirm, setRevokedConfirm] = useState(false);
+  // v1.15.4 (P1/P2/P3): in-app confirmations (no native confirm()), explicit cancellation feedback, scoped enrollment cancellation.
+  const [groupConfirm, setGroupConfirm] = useState(null); // { kind: "create" | "unlink", localGroupId, name }
+  const [phase2Notice, setPhase2Notice] = useState("");
+  const [deviceNotice, setDeviceNotice] = useState("");
+  const [enrollSent, setEnrollSent] = useState(false);
+  const enrollAbortRef = useRef(null);
+  useEffect(() => () => {
+    const pending = enrollAbortRef.current;
+    if (pending) pending.abort();
+  }, []);
   const deviceAuthorized = !!(user && user.emailVerified && device && device.status === "authorized");
+  const entitlement = useCommercialEntitlement(commercial);
+  const {
+    view: licenseView,
+    syncStatus: licenseSync
+  } = useCommercialLicenseView(commercial, entitlement);
+  // Owner Cloud capability = verified Owner + authorized device + server-verified entitlement. Local Core never depends on it.
+  const cloudReady = deviceAuthorized && entitlementGranted(entitlement);
   const phase2GroupLinking = !!(commercialAvailable && commercial.listBadmintonGroups && commercial.linkBadmintonGroup && commercial.createAndLinkBadmintonGroup && commercial.validateBadmintonGroupLink && commercial.unlinkBadmintonGroup);
   const localGroupOptions = (localGroups && Array.isArray(localGroups.records) ? localGroups.records : []).filter(record => record && typeof record.localGroupId === "string" && typeof record.name === "string");
   const localGroupNames = localGroupOptions.map(record => record.name);
@@ -33166,7 +34363,7 @@ function BadQOnlineSheet({
     }
   }, [phase2GroupLinking, localGroupOptions.map(record => `${record.localGroupId}:${record.name}`).join("|")]);
   useEffect(() => {
-    if (!phase2GroupLinking || !deviceAuthorized) return;
+    if (!phase2GroupLinking || !cloudReady) return;
     let cancelled = false;
     setPhase2Busy(true);
     setPhase2Error("");
@@ -33183,10 +34380,10 @@ function BadQOnlineSheet({
     return () => {
       cancelled = true;
     };
-  }, [phase2GroupLinking, user && user.uid, deviceAuthorized]);
+  }, [phase2GroupLinking, user && user.uid, cloudReady]);
   const selectedGroupLink = (groupLinkState.records || []).find(record => record && record.localGroupId === selectedLocalGroupId) || null;
   useEffect(() => {
-    if (!phase2GroupLinking || !selectedGroupLink || selectedGroupLink.linkStatus !== "linked" || selectedGroupLink.validationStatus === "validated" || !deviceAuthorized) return;
+    if (!phase2GroupLinking || !selectedGroupLink || selectedGroupLink.linkStatus !== "linked" || selectedGroupLink.validationStatus === "validated" || !cloudReady) return;
     let cancelled = false;
     commercial.validateBadmintonGroupLink(selectedGroupLink.localGroupId).catch(() => {
       if (!cancelled) setPhase2Error(t("online.groupLink.actionError"));
@@ -33194,7 +34391,7 @@ function BadQOnlineSheet({
     return () => {
       cancelled = true;
     };
-  }, [phase2GroupLinking, selectedGroupLink && selectedGroupLink.localGroupId, selectedGroupLink && selectedGroupLink.validationStatus, user && user.uid, deviceAuthorized]);
+  }, [phase2GroupLinking, selectedGroupLink && selectedGroupLink.localGroupId, selectedGroupLink && selectedGroupLink.validationStatus, user && user.uid, cloudReady]);
   const refreshPhase2Groups = async () => {
     const groups = await commercial.listBadmintonGroups();
     const safe = Array.isArray(groups) ? groups : [];
@@ -33202,10 +34399,14 @@ function BadQOnlineSheet({
     setSelectedCloudGroupId(current => safe.some(group => group.groupId === current) ? current : safe[0]?.groupId || "");
     return safe;
   };
+  useEffect(() => {
+    if (!(phase2GroupLinking && cloudReady)) setGroupConfirm(null);
+  }, [phase2GroupLinking, cloudReady]);
   const doPhase2Link = async () => {
     if (!selectedLocalGroup || !selectedCloudGroupId) return;
     setPhase2Busy(true);
     setPhase2Error("");
+    setPhase2Notice("");
     try {
       await commercial.linkBadmintonGroup({
         localGroupId: selectedLocalGroup.localGroupId,
@@ -33218,45 +34419,77 @@ function BadQOnlineSheet({
       setPhase2Busy(false);
     }
   };
-  const doPhase2Create = async () => {
-    if (!selectedLocalGroup || !window.confirm(t("online.groupLink.createConfirm", {
-      name: selectedLocalGroup.name
-    }))) return;
-    setPhase2Busy(true);
+  // P1: Create/Unlink open an in-app confirmation (never window.confirm, which some browsers/WebViews suppress silently).
+  // Nothing is sent until the explicit Confirm tap; dismissing it always says so.
+  const doPhase2Create = () => {
+    if (!selectedLocalGroup || phase2Busy) return;
     setPhase2Error("");
-    try {
-      await commercial.createAndLinkBadmintonGroup({
-        localGroupId: selectedLocalGroup.localGroupId,
-        localGroupName: selectedLocalGroup.name,
-        displayName: selectedLocalGroup.name
-      });
-      await refreshPhase2Groups();
-    } catch (e) {
-      setPhase2Error(t("online.groupLink.actionError"));
-    } finally {
-      setPhase2Busy(false);
+    setPhase2Notice("");
+    setGroupConfirm({
+      kind: "create",
+      localGroupId: selectedLocalGroup.localGroupId,
+      name: selectedLocalGroup.name
+    });
+  };
+  const doPhase2Unlink = () => {
+    if (!selectedGroupLink || phase2Busy) return;
+    setPhase2Error("");
+    setPhase2Notice("");
+    setGroupConfirm({
+      kind: "unlink",
+      localGroupId: selectedGroupLink.localGroupId,
+      name: selectedGroupLink.cloudGroupDisplayName || ""
+    });
+  };
+  const cancelGroupConfirm = () => {
+    const pending = groupConfirm;
+    setGroupConfirm(null);
+    if (pending) setPhase2Notice(t(pending.kind === "create" ? "online.groupConfirm.createCancelled" : "online.groupConfirm.unlinkCancelled"));
+  };
+  const runGroupConfirm = async () => {
+    const pending = groupConfirm;
+    if (!pending || phase2Busy) return;
+    setGroupConfirm(null);
+    setPhase2Error("");
+    setPhase2Notice("");
+    if (pending.kind === "create") {
+      const group = localGroupOptions.find(record => record.localGroupId === pending.localGroupId);
+      if (!group) return;
+      setPhase2Busy(true);
+      try {
+        await commercial.createAndLinkBadmintonGroup({
+          localGroupId: group.localGroupId,
+          localGroupName: group.name,
+          displayName: group.name
+        });
+        await refreshPhase2Groups();
+      } catch (e) {
+        setPhase2Error(t("online.groupLink.actionError"));
+      } finally {
+        setPhase2Busy(false);
+      }
+    } else {
+      const link = (groupLinkState.records || []).find(record => record && record.localGroupId === pending.localGroupId && record.linkStatus === "linked");
+      if (!link) return;
+      setPhase2Busy(true);
+      try {
+        await commercial.unlinkBadmintonGroup(link.localGroupId, {
+          explicit: true
+        });
+      } catch (e) {
+        setPhase2Error(t("online.groupLink.actionError"));
+      } finally {
+        setPhase2Busy(false);
+      }
     }
   };
   const doPhase2Validate = async () => {
     if (!selectedGroupLink) return;
     setPhase2Busy(true);
     setPhase2Error("");
+    setPhase2Notice("");
     try {
       await commercial.validateBadmintonGroupLink(selectedGroupLink.localGroupId);
-    } catch (e) {
-      setPhase2Error(t("online.groupLink.actionError"));
-    } finally {
-      setPhase2Busy(false);
-    }
-  };
-  const doPhase2Unlink = async () => {
-    if (!selectedGroupLink || !window.confirm(t("online.groupLink.unlinkConfirm"))) return;
-    setPhase2Busy(true);
-    setPhase2Error("");
-    try {
-      await commercial.unlinkBadmintonGroup(selectedGroupLink.localGroupId, {
-        explicit: true
-      });
     } catch (e) {
       setPhase2Error(t("online.groupLink.actionError"));
     } finally {
@@ -33363,27 +34596,98 @@ function BadQOnlineSheet({
   };
   const openRegister = () => {
     setDeviceErr("");
+    setDeviceNotice("");
     setReauthPassword("");
     setDeviceLabel(describeThisDevice(t));
     setRegisterOpen(true);
   };
+  // P3: ONE registration attempt at a time (UI guard + per-Owner single-flight in the device manager). The attempt is pinned to the
+  // Owner who confirmed it and can be cancelled (Cancel / dismissing the sheet) until the request has actually been sent.
   const doEnroll = async () => {
+    if (enrollAbortRef.current) return;
+    const controller = new AbortController();
+    enrollAbortRef.current = controller;
+    setEnrollSent(false);
     setBusy(true);
     setDeviceErr("");
+    setDeviceNotice("");
     try {
       if (needsRecentAuth) await commercial.reauthenticateOwner(reauthPassword);
       setReauthPassword("");
+      if (controller.signal.aborted) throw Object.assign(new Error("enrollment-cancelled"), {
+        code: "enrollment-cancelled"
+      });
       await commercial.enrollThisDevice({
         confirm: true,
-        label: deviceLabel.trim() || describeThisDevice(t)
+        label: deviceLabel.trim() || describeThisDevice(t),
+        expectedUid: user && user.uid,
+        signal: controller.signal,
+        onSend: () => setEnrollSent(true)
       });
       setRegisterOpen(false);
     } catch (e) {
       // States with their own card (limit / migration / revoked / unauthorized) close the dialog; recoverable ones (recent sign-in, network) keep it open.
-      if (e && ["DEVICE_LIMIT_REACHED", "device-policy-migration-required", "device-revoked", "device-credential-invalid"].includes(e.code)) setRegisterOpen(false);else setDeviceErr(deviceError(e));
+      if (e && e.code === "enrollment-cancelled") {
+        setRegisterOpen(false);
+        setDeviceNotice(t("online.device.registerCancelled"));
+      } else if (e && ["DEVICE_LIMIT_REACHED", "device-policy-migration-required", "device-revoked", "device-credential-invalid"].includes(e.code)) setRegisterOpen(false);else setDeviceErr(deviceError(e));
     } finally {
+      if (enrollAbortRef.current === controller) enrollAbortRef.current = null;
+      setEnrollSent(false);
       setBusy(false);
     }
+  };
+  const cancelRegister = () => {
+    if (enrollSent) return; // the request already left this device: it cannot be recalled
+    const pending = enrollAbortRef.current;
+    if (pending) {
+      pending.abort();
+      return;
+    } // doEnroll finishes the cancellation at its next checkpoint
+    setRegisterOpen(false);
+    setDeviceNotice(t("online.device.registerCancelled"));
+  };
+  // Reauthorization recovery (device already registered; a recent sign-in is needed): continues the reauthorization the Owner already
+  // confirmed - same device, no enrollment. Cancel forgets it; nothing is sent.
+  const isReauthRecovery = !!(device && device.status === "reauth_required" && device.reauthIntent === "reauthorize" && device.reauthCurrent !== false); // only for THIS device; reauthorizing another device is driven from the Device Manager
+  // A leftover "confirm reauthorize" sub-view must not survive a state change away from the revoked / recovery cards (sign-out, Owner switch...).
+  useEffect(() => {
+    const st = device && device.status;
+    if (st !== "revoked" && st !== "reauth_required") setRevokedConfirm(false);
+  }, [device && device.status]);
+  const resumeInFlightRef = useRef(false);
+  // Dismissing the sheet while the continuation is still waiting for the sign-in cancels it (nothing is sent after the Owner left).
+  useEffect(() => () => {
+    if (resumeInFlightRef.current) {
+      try {
+        commercial.cancelDeviceReauthorization();
+      } catch {/* presentation only */}
+    }
+  }, []);
+  const doContinueReauthorization = async () => {
+    setBusy(true);
+    setDeviceErr("");
+    setDeviceNotice("");
+    resumeInFlightRef.current = true;
+    try {
+      await commercial.resumeDeviceReauthorization(reauthPassword);
+      setReauthPassword("");
+      setRevokedConfirm(false);
+    } catch (e) {
+      setDeviceErr(deviceError(e));
+    } finally {
+      resumeInFlightRef.current = false;
+      setBusy(false);
+    }
+  };
+  const cancelReauthorization = () => {
+    try {
+      commercial.cancelDeviceReauthorization();
+    } catch {/* presentation only */}
+    setReauthPassword("");
+    setDeviceErr("");
+    setRevokedConfirm(false);
+    setDeviceNotice(t("online.device.reauthCancelled"));
   };
   const doReauthorizeThisDevice = async () => {
     setBusy(true);
@@ -33412,7 +34716,8 @@ function BadQOnlineSheet({
     available: commercialAvailable,
     user,
     device,
-    isOffline
+    isOffline,
+    entitlement
   });
   const meta = ONLINE_STATUS_META[status];
   const max = device && device.maxAuthorizedDevices || 2;
@@ -33450,7 +34755,11 @@ function BadQOnlineSheet({
       fontWeight: 700,
       color: meta.color
     }
-  }, t(ONLINE_STATUS_LABEL_KEY[status]))), !user && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, t(ONLINE_STATUS_LABEL_KEY[status]))), /*#__PURE__*/React.createElement(LocalLicenseCard, {
+    t: t,
+    user: user,
+    fmtDate: typeof fmtDateTime === "function" ? fmtDateTime : null
+  }), !user && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11.5,
       color: T.muted,
@@ -33666,7 +34975,19 @@ function BadQOnlineSheet({
       color: T.muted,
       marginTop: 2
     }
-  }, t("online.auth.verified"))), dStatus === "authorized" && /*#__PURE__*/React.createElement("div", {
+  }, t("online.auth.verified"))), deviceNotice && dStatus !== "authorized" && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-notice",
+    style: {
+      marginBottom: 8,
+      fontSize: 12,
+      color: T.muted
+    }
+  }, deviceNotice), deviceAuthorized && /*#__PURE__*/React.createElement(LicenseStatusCard, {
+    view: licenseView,
+    syncStatus: licenseSync,
+    t: t,
+    fmtDate: typeof fmtDateTime === "function" ? fmtDateTime : null
+  }), dStatus === "authorized" && /*#__PURE__*/React.createElement("div", {
     "data-testid": "device-state-authorized",
     style: card("#e2f5ec", T.green)
   }, /*#__PURE__*/React.createElement("div", {
@@ -33683,7 +35004,71 @@ function BadQOnlineSheet({
       marginTop: 8,
       width: "100%"
     }
-  }, t("online.device.manage"))), (dStatus === "needs_enrollment" || dStatus === "enrolling" || dStatus === "reauth_required") && /*#__PURE__*/React.createElement("div", {
+  }, t("online.device.manage"))), isReauthRecovery && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-state-reauth-recovery",
+    style: card(T.surface, T.border)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      fontWeight: 800,
+      color: T.text,
+      marginBottom: 4
+    }
+  }, t("online.device.reauthTitle")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6,
+      marginBottom: 8
+    }
+  }, t("online.device.reauthRecoveryBody")), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    "data-testid": "device-reauth-password",
+    autoComplete: "current-password",
+    placeholder: t("online.auth.password"),
+    value: reauthPassword,
+    onChange: e => setReauthPassword(e.target.value),
+    style: {
+      width: "100%",
+      boxSizing: "border-box",
+      padding: "9px 10px",
+      borderRadius: 9,
+      border: `1px solid ${T.border}`,
+      background: T.surface2,
+      color: T.text,
+      fontSize: 13,
+      marginBottom: 8
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-reauth-cancel",
+    disabled: busy,
+    onClick: cancelReauthorization,
+    style: {
+      ...btnSecondary,
+      flex: 1
+    }
+  }, t("common.cancel")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "device-reauth-continue",
+    disabled: busy || !reauthPassword,
+    onClick: doContinueReauthorization,
+    style: {
+      ...btnPrimary,
+      flex: 1
+    }
+  }, t("online.device.reauthContinue"))), deviceErr && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "device-error",
+    style: {
+      marginTop: 8,
+      fontSize: 11.5,
+      color: T.accent,
+      whiteSpace: "pre-line"
+    }
+  }, deviceErr)), (dStatus === "needs_enrollment" || dStatus === "enrolling" || dStatus === "reauth_required" && device.reauthIntent !== "reauthorize") && /*#__PURE__*/React.createElement("div", {
     "data-testid": "device-state-needs-enrollment",
     style: card(T.surface, T.border)
   }, /*#__PURE__*/React.createElement("div", {
@@ -33845,7 +35230,8 @@ function BadQOnlineSheet({
     style: {
       marginTop: 8,
       fontSize: 11.5,
-      color: T.accent
+      color: T.accent,
+      whiteSpace: "pre-line"
     }
   }, deviceErr)), dStatus === "unauthorized" && /*#__PURE__*/React.createElement("div", {
     "data-testid": "device-state-unauthorized",
@@ -33915,7 +35301,47 @@ function BadQOnlineSheet({
       fontSize: 12,
       color: T.muted
     }
-  }, t("online.auth.checking"))), phase2GroupLinking && deviceAuthorized && /*#__PURE__*/React.createElement("div", {
+  }, t("online.auth.checking"))), deviceAuthorized && entitlement && !entitlementGranted(entitlement) && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "entitlement-state",
+    "data-status": entitlement.status,
+    style: card(entitlement.status === "unverified" ? T.surface : "#fff7ed", entitlement.status === "unverified" ? T.border : "#b45309")
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      fontWeight: 800,
+      color: T.text,
+      marginBottom: 4
+    }
+  }, t("online.entitlement.title")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: T.muted,
+      lineHeight: 1.6,
+      marginBottom: 6
+    }
+  }, entitlement.status === "none" ? t("online.entitlement.none") : entitlement.status === "expired" ? t("online.entitlement.expired") : entitlement.status === "revoked" ? t("online.entitlement.revoked") : entitlement.status === "invalid" ? t("online.entitlement.invalid") : t("online.entitlement.unverified")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: T.muted,
+      lineHeight: 1.6,
+      marginBottom: 8
+    }
+  }, t("online.entitlement.localNote")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "entitlement-recheck",
+    disabled: busy,
+    onClick: async () => {
+      setBusy(true);
+      try {
+        await commercial.validateIdentityLink();
+      } catch (e) {/* the entitlement + device cards show the outcome */} finally {
+        setBusy(false);
+      }
+    },
+    style: {
+      ...btnSecondary,
+      width: "100%"
+    }
+  }, t("online.entitlement.recheck"))), phase2GroupLinking && cloudReady && /*#__PURE__*/React.createElement("div", {
     "data-testid": "badminton-group-linking",
     style: {
       padding: 12,
@@ -34049,7 +35475,14 @@ function BadQOnlineSheet({
       fontSize: 11.5,
       color: T.accent
     }
-  }, phase2Error))), err && /*#__PURE__*/React.createElement("div", {
+  }, phase2Error), phase2Notice && !phase2Error && /*#__PURE__*/React.createElement("div", {
+    "data-testid": "group-link-notice",
+    style: {
+      marginTop: 8,
+      fontSize: 11.5,
+      color: T.muted
+    }
+  }, phase2Notice))), err && /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 10,
       fontSize: 12,
@@ -34074,10 +35507,48 @@ function BadQOnlineSheet({
       width: "100%",
       marginTop: 14
     }
-  }, t("common.close")), registerOpen && user && user.emailVerified && /*#__PURE__*/React.createElement(Overlay, {
-    onClose: () => {
-      if (!busy) setRegisterOpen(false);
+  }, t("common.close")), groupConfirm && phase2GroupLinking && cloudReady && /*#__PURE__*/React.createElement(Overlay, {
+    onClose: cancelGroupConfirm
+  }, /*#__PURE__*/React.createElement("div", {
+    "data-testid": "group-confirm-dialog",
+    "data-kind": groupConfirm.kind
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      marginBottom: 8
     }
+  }, t(groupConfirm.kind === "create" ? "online.groupConfirm.createTitle" : "online.groupConfirm.unlinkTitle")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: T.text,
+      lineHeight: 1.7,
+      marginBottom: 12
+    }
+  }, groupConfirm.kind === "create" ? t("online.groupLink.createConfirm", {
+    name: groupConfirm.name
+  }) : t("online.groupLink.unlinkConfirm")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    "data-testid": "group-confirm-cancel",
+    onClick: cancelGroupConfirm,
+    style: {
+      ...btnSecondary,
+      flex: 1
+    }
+  }, t("common.cancel")), /*#__PURE__*/React.createElement("button", {
+    "data-testid": "group-confirm-ok",
+    disabled: phase2Busy,
+    onClick: runGroupConfirm,
+    style: {
+      ...btnPrimary,
+      flex: 1
+    }
+  }, t("common.confirm"))))), registerOpen && user && user.emailVerified && /*#__PURE__*/React.createElement(Overlay, {
+    onClose: cancelRegister
   }, /*#__PURE__*/React.createElement("div", {
     "data-testid": "device-register-dialog"
   }, /*#__PURE__*/React.createElement("div", {
@@ -34086,14 +35557,14 @@ function BadQOnlineSheet({
       fontWeight: 800,
       marginBottom: 8
     }
-  }, t("online.device.registerTitle")), /*#__PURE__*/React.createElement("div", {
+  }, t("online.device.registerConfirmTitle")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: T.text,
       lineHeight: 1.7,
       marginBottom: 10
     }
-  }, t("online.device.registerBody", {
+  }, t("online.device.registerDialogBody", {
     max
   })), /*#__PURE__*/React.createElement(Label, null, t("online.device.nameLabel")), /*#__PURE__*/React.createElement("input", {
     type: "text",
@@ -34144,7 +35615,8 @@ function BadQOnlineSheet({
     style: {
       marginBottom: 10,
       fontSize: 12,
-      color: T.accent
+      color: T.accent,
+      whiteSpace: "pre-line"
     }
   }, deviceErr), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -34152,8 +35624,9 @@ function BadQOnlineSheet({
       gap: 8
     }
   }, /*#__PURE__*/React.createElement("button", {
-    disabled: busy,
-    onClick: () => setRegisterOpen(false),
+    "data-testid": "device-register-cancel",
+    disabled: enrollSent,
+    onClick: cancelRegister,
     style: btnSecondary
   }, t("common.cancel")), /*#__PURE__*/React.createElement("button", {
     "data-testid": "device-register-confirm",
@@ -34163,7 +35636,7 @@ function BadQOnlineSheet({
       ...btnPrimary,
       opacity: busy ? 0.6 : 1
     }
-  }, busy ? t("online.device.registering") : t("online.device.registerAction"))))), manageOpen && user && user.emailVerified && /*#__PURE__*/React.createElement(DeviceManagementSheet, {
+  }, busy ? t("online.device.registering") : t("online.device.registerConfirmAction"))))), manageOpen && user && user.emailVerified && /*#__PURE__*/React.createElement(DeviceManagementSheet, {
     commercial: commercial,
     device: device,
     t: t,
@@ -34212,13 +35685,19 @@ function DeviceManagementSheet({
       if (pending.kind === "revoke") setRows(await commercial.revokeOwnerDevice(pending.ref, {
         explicit: true
       }));else {
-        if (needsRecentAuth) {
-          await commercial.reauthenticateOwner(password);
+        if (needsRecentAuth && device.reauthIntent === "reauthorize" && commercial.resumeDeviceReauthorization) {
+          setRows(await commercial.resumeDeviceReauthorization(password));
           setPassword("");
+        } // continues the SAME confirmed reauthorization (no state flicker, no enrollment)
+        else {
+          if (needsRecentAuth) {
+            await commercial.reauthenticateOwner(password);
+            setPassword("");
+          }
+          setRows(await commercial.reauthorizeOwnerDevice(pending.ref, {
+            confirm: true
+          }));
         }
-        setRows(await commercial.reauthorizeOwnerDevice(pending.ref, {
-          confirm: true
-        }));
       }
       setPending(null);
     } catch (e) {
@@ -34389,8 +35868,14 @@ function DeviceManagementSheet({
   }, /*#__PURE__*/React.createElement("button", {
     disabled: busy,
     onClick: () => {
+      if (device && device.reauthIntent === "reauthorize" && commercial.cancelDeviceReauthorization) {
+        try {
+          commercial.cancelDeviceReauthorization();
+        } catch {/* presentation only */}
+      }
       setPending(null);
       setErr("");
+      setPassword("");
     },
     style: {
       ...btnSecondary,
@@ -42905,7 +44390,27 @@ function FinanceSettingsBody({
       ...s,
       shuttleSingles: v
     }))
-  }))), model === "perPerson" && /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement(Label, null, t ? t("finance.shuttleBillingModeLabel") : "วิธีคิดค่าลูกแบด"), /*#__PURE__*/React.createElement("div", {
+    "data-testid": "shuttle-billing-mode",
+    "data-mode": settings.shuttleBillingMode === "perShuttle" ? "perShuttle" : "perGame",
+    style: {
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement(Seg, {
+    options: [["perShuttle", t ? t("finance.shuttleBillingPerShuttle") : "คิดตามลูกที่ใช้จริง"], ["perGame", t ? t("finance.shuttleBillingPerGame") : "คิดตามเกมที่ตี"]],
+    value: settings.shuttleBillingMode === "perShuttle" ? "perShuttle" : "perGame",
+    onChange: v => setSettings(s => ({
+      ...s,
+      shuttleBillingMode: v === "perShuttle" ? "perShuttle" : "perGame"
+    }))
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: T.muted,
+      lineHeight: 1.6,
+      marginBottom: 10
+    }
+  }, settings.shuttleBillingMode === "perShuttle" ? t ? t("finance.shuttleBillingPerShuttleNote") : "" : t ? t("finance.shuttleBillingPerGameNote") : "")), model === "perPerson" && /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 10
     }
@@ -50668,14 +52173,14 @@ function QuanPaymentPanel({
       paddingLeft: 8,
       lineHeight: 1.6
     }
-  }, /*#__PURE__*/React.createElement("div", null, t("finance.doublesBreakdownLine", {
-    games: detailBill.doublesGames,
+  }, /*#__PURE__*/React.createElement("div", null, t(detailBill.perShuttle ? "finance.doublesBreakdownLineShuttle" : "finance.doublesBreakdownLine", {
+    games: detailBill.doublesUnits,
     rate: detailBill.doublesRate,
-    total: formatCurrency(detailBill.doublesGames * detailBill.doublesRate)
-  })), /*#__PURE__*/React.createElement("div", null, t("finance.singlesBreakdownLine", {
-    games: detailBill.singlesGames,
+    total: formatCurrency(detailBill.doublesUnits * detailBill.doublesRate)
+  })), /*#__PURE__*/React.createElement("div", null, t(detailBill.perShuttle ? "finance.singlesBreakdownLineShuttle" : "finance.singlesBreakdownLine", {
+    games: detailBill.singlesUnits,
     rate: detailBill.singlesRate,
-    total: formatCurrency(detailBill.singlesGames * detailBill.singlesRate)
+    total: formatCurrency(detailBill.singlesUnits * detailBill.singlesRate)
   })))) : /*#__PURE__*/React.createElement(BillRow, {
     label: t("finance.shuttleCostShort"),
     v: detailBill.eShuttle
@@ -54913,7 +56418,7 @@ function BackupSettingsEditor({
       fontWeight: 700,
       color: T.muted
     }
-  }, t ? t("backup.diagLogTitle") : "Diagnostic Log (v1.11.47, ชั่วคราว)"), /*#__PURE__*/React.createElement(ChevronDown, {
+  }, t ? t("backup.diagLogTitle") : "Diagnostic Log (ชั่วคราว)"), /*#__PURE__*/React.createElement(ChevronDown, {
     size: 13,
     color: T.muted,
     style: {

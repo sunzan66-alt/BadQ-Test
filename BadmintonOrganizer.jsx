@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from "react";
 import { User, Search, Camera, Plus, Trash2, Check, X, Shuffle, Play, RotateCcw, Minus, ChevronDown, ChevronUp, Clock, Lock, Unlock, Calendar, ChevronRight, History, ClipboardList, Undo2, Info, QrCode, Maximize2, Wallet, Trophy, Upload, Share2, LogOut, Download, Gift } from "lucide-react";
 
-const APP_VERSION = "1.15.0";
+const APP_VERSION = "1.15.6";
 
 const LEVELS = ["R", "BG1", "BG2", "BG3", "S-", "S", "N-", "N", "P-", "P", "C"];
 const WEIGHT = { R: 1, BG1: 2, BG2: 3, BG3: 4, "S-": 5, S: 6, "N-": 7, N: 8, "P-": 9, P: 10, C: 11 };
@@ -2340,21 +2340,23 @@ function computeBill(players, settings, finishedMatches) {
   const matches = finishedMatches || [];
   const doublesRate = Number(settings.shuttleDoubles ?? settings.shuttle) || 0;
   const singlesRate = Number(settings.shuttleSingles ?? settings.shuttle) || 0;
+  const perShuttleMode = settings.shuttleBillingMode === "perShuttle"; // absent / anything else => per completed game (legacy)
   const ledgerGames = completedGamesByPlayer(matches); // v1.12.38: games = completed-match ledger, never the p.games cache
   return payers.map((p) => {
     const court = perPerson ? (settings.perPersonRate || 0) : splitEq ? splitSummary.charge : (settings.court || 0);
     // Derive real per-type participation from the actual finished-match records instead of trusting the
     // single cumulative p.games counter — a player with 3 doubles + 2 singles games in the SAME session
     // must be billed 3×doublesRate + 2×singlesRate, not 5×one-rate (see spec's worked example: ฿245).
-    let doublesGames = 0, singlesGames = 0;
+    let doublesGames = 0, singlesGames = 0, doublesUnits = 0, singlesUnits = 0; // *Units = what the rate multiplies: games (perGame) or actual shuttles (perShuttle)
     if (!perPerson && !splitEq) {
       for (const m of matches) {
         if (!m) continue;
         if (!((m.teamA || []).includes(p.id) || (m.teamB || []).includes(p.id))) continue;
-        if (resolveMatchType(m) === "singles") singlesGames++; else doublesGames++;
+        const units = perShuttleMode ? matchShuttleUsed(m) : 1;
+        if (resolveMatchType(m) === "singles") { singlesGames++; singlesUnits += units; } else { doublesGames++; doublesUnits += units; }
       }
     }
-    const shuttle = (perPerson || splitEq) ? 0 : (doublesGames * doublesRate + singlesGames * singlesRate);
+    const shuttle = (perPerson || splitEq) ? 0 : (doublesUnits * doublesRate + singlesUnits * singlesRate);
     const other = otherShare;
     const discount = p.discount || 0; // per-person discount, entered manually in the player's summary detail
     const wheelDiscount = p.wheelDiscount || 0; // locked discount won from the spin wheel (not manually editable)
@@ -2387,12 +2389,15 @@ function computeBill(players, settings, finishedMatches) {
     const outDiscount = hasFrozenPayment ? (fb.eDiscount || 0) : discount;
     const outWheelDiscount = hasFrozenPayment ? (fb.eWheelDiscount || 0) : wheelDiscount;
     const outCarriedInDiscount = hasFrozenPayment ? (fb.eCarriedInDiscount || 0) : carriedInDiscount;
+    const outDoublesUnits = hasFrozenPayment ? (fb.doublesUnits != null ? fb.doublesUnits : (fb.doublesGames || 0)) : doublesUnits;
+    const outSinglesUnits = hasFrozenPayment ? (fb.singlesUnits != null ? fb.singlesUnits : (fb.singlesGames || 0)) : singlesUnits;
+    const outPerShuttle = hasFrozenPayment ? fb.perShuttle === true : perShuttleMode;
     const outDoublesGames = hasFrozenPayment ? (fb.doublesGames || 0) : doublesGames;
     const outSinglesGames = hasFrozenPayment ? (fb.singlesGames || 0) : singlesGames;
     const outDoublesRate = hasFrozenPayment ? (fb.doublesRate || 0) : doublesRate;
     const outSinglesRate = hasFrozenPayment ? (fb.singlesRate || 0) : singlesRate;
     const completedGames = ledgerGames.get(p.id) || 0;
-    return { ...p, games: completedGames, completedGames, eCourt: outCourt, eShuttle: outShuttle, eOther: outOther, eDiscount: outDiscount, eWheelDiscount: outWheelDiscount, eCarriedInDiscount: outCarriedInDiscount, total, isOwnerExempt, doublesGames: outDoublesGames, singlesGames: outSinglesGames, doublesRate: outDoublesRate, singlesRate: outSinglesRate };
+    return { ...p, games: completedGames, completedGames, eCourt: outCourt, eShuttle: outShuttle, eOther: outOther, eDiscount: outDiscount, eWheelDiscount: outWheelDiscount, eCarriedInDiscount: outCarriedInDiscount, total, isOwnerExempt, doublesGames: outDoublesGames, doublesUnits: outDoublesUnits, singlesUnits: outSinglesUnits, perShuttle: outPerShuttle, singlesGames: outSinglesGames, doublesRate: outDoublesRate, singlesRate: outSinglesRate };
   });
 }
 // v1.11.38: true if this player is still mid-match (playing or paused, i.e. NOT finished yet) right now —
@@ -2461,6 +2466,7 @@ function togglePaidTransition(players, playerId, ctx) {
           eCourt: b.eCourt, eShuttle: b.eShuttle, eOther: b.eOther,
           eDiscount: b.eDiscount, eWheelDiscount: b.eWheelDiscount, eCarriedInDiscount: b.eCarriedInDiscount,
           doublesGames: b.doublesGames, singlesGames: b.singlesGames, doublesRate: b.doublesRate, singlesRate: b.singlesRate,
+          doublesUnits: b.doublesUnits, singlesUnits: b.singlesUnits, perShuttle: b.perShuttle === true,
         },
       };
     }
@@ -4740,6 +4746,11 @@ function ImageCropper({ src, circleGuide, title, onCancel, onConfirm, maxSize })
 // (and mutates) the same wheelPrizes array reference.
 function getDefaultSettings() {
   return {
+    // P0 Shuttlecock Billing Modes (shipped in 1.15.6): how the existing shuttle SELLING rate is applied to player charges.
+    // "perShuttle" (DEFAULT for NEW groups / fresh installs) charges rate x the match's actual shuttleUsed; "perGame" charges 1 rate per completed
+    // match. Saved settings that LACK this field are LEGACY and are normalised to "perGame" by every load path (see legacyShuttleBillingMode) so
+    // nobody's billing changes silently. Never affects cost.
+    shuttleBillingMode: "perShuttle",
     // v1.12.51 (Promotion & Loyalty Foundation): GROUP-SPECIFIC campaign storage, additive inside this same
     // existing `settings` object per spec section 1 — travels for free through the existing Group Default
     // (groupDefaults[session.name]), Backup/Restore, and boot-load plumbing, exactly like every other
@@ -4892,6 +4903,11 @@ function inferAdvancedFeatureFlags(rawSettings, rawActiveTournament, rawTourname
 }
 // v1.11.7 (Part M) / v1.11.12: backward-compatible settings defaults — old saved settings objects predate
 // these fields; backfill them without touching any existing customized value.
+// Explicit saved choice always wins; a saved settings object WITHOUT a valid choice is legacy => "perGame" (unchanged billing).
+function legacyShuttleBillingMode(saved) {
+  const v = saved && typeof saved === "object" ? saved.shuttleBillingMode : undefined;
+  return v === "perShuttle" ? "perShuttle" : "perGame";
+}
 function normSettings(s) {
   const base = s && typeof s === "object" ? s : {};
   const amm = Number(base.averageMatchMinutes);
@@ -4932,6 +4948,7 @@ function normSettings(s) {
   return {
     ...getDefaultSettings(),
     ...base,
+    shuttleBillingMode: s && typeof s === "object" ? legacyShuttleBillingMode(base) : "perShuttle", // saved object: explicit value kept, absent / corrupt => legacy "perGame"; no saved settings at all => new default
     realtimeCourtAvailability: base.realtimeCourtAvailability === true, // v1.14.5: anything but an explicit true (absent / legacy / corrupt) => OFF
     shuttleEco: {
       costPerTube: Math.max(0, Number(sEco.costPerTube) || 0),
@@ -5378,7 +5395,7 @@ function migrateBackupData(parsed) {
   data.courtCount = data.courtCount || 2;
   data.courtLabels = syncCourtLabels(data.courtLabels, data.courtCount);
   data.mode = data.mode || "doubles";
-  data.settings = { ...getDefaultSettings(), ...(data.settings || {}) };
+  data.settings = { ...getDefaultSettings(), ...(data.settings || {}), shuttleBillingMode: data.settings && typeof data.settings === "object" ? legacyShuttleBillingMode(data.settings) : "perShuttle" };
   // v1.12.7 (fix 2): the spread above (getDefaultSettings() as base, then data.settings on top) already
   // makes a genuinely-missing levelPresetId key resolve to getDefaultSettings()'s new "badweb-central"
   // default; this explicit check is the secondary safety net for an old backup that stored the key as an
@@ -8653,6 +8670,23 @@ function AppInner() {
   // everywhere else keeps its Thai literals untouched (see the phase report for the exact scope).
   const { locale: uiLocale, setLocale: setUiLocale, timeZone: uiTimeZone, setTimeZone: setUiTimeZone, i18n } = useBadQI18n();
   const t = i18n.t;
+  // BAD_Q Offline gameplay gate: a licence that is missing / expired / revoked / released only stops STARTING new games. Everything else
+  // (data, history, finance, Backup/Restore, finishing games already in progress) stays available and nothing is ever deleted.
+  const [licenseRestricted, setLicenseRestricted] = useState(false);
+  useEffect(() => {
+    // the licence module is a deferred ES module: it may not exist yet at first render, so resolve it lazily and re-subscribe when the bridge announces itself
+    let un = () => {};
+    const upd = () => { try { const api = window.BadQLocalLicenseApi; if (api) setLicenseRestricted(!api.canStartGames()); } catch (e) {} };
+    const sub = () => { try { un(); } catch (e) {} un = () => {}; try { const api = window.BadQLocalLicenseApi; if (api) un = api.subscribe(upd) || (() => {}); } catch (e) {} upd(); };
+    sub(); const id = setInterval(() => { if (!window.BadQLocalLicenseApi) return; upd(); }, 5000);
+    window.addEventListener("badq:commercial-bridge-ready", sub);
+    return () => { try { un(); } catch (e) {} clearInterval(id); window.removeEventListener("badq:commercial-bridge-ready", sub); };
+  }, []);
+  const licenseGateBlocks = () => {
+    const api = window.BadQLocalLicenseApi;
+    if (api && api.canStartGames() === false) { try { alert(t("license.gate.blocked")); } catch (e) {} return true; }
+    return false;
+  };
   // v1.12.44 (Localization Closure): count-aware translation (.one/.other catalog variants — see
   // src/i18n/index.mjs's translateCount), threaded the same way as `t` above, only into the surfaces this
   // phase actually wires up (Game tab's session-repeat warnings so far).
@@ -9361,6 +9395,7 @@ function AppInner() {
       const inferred = inferAdvancedFeatureFlags(s.settings, s.activeTournament, s.tournamentHistory, s.rewardHistory);
       setSettings((d) => ({
         ...d, ...s.settings,
+        shuttleBillingMode: legacyShuttleBillingMode(s.settings), // saved settings without the field keep legacy per-game billing
         tournamentEnabled: inferred.tournamentEnabled,
         wheelEnabled: inferred.wheelEnabled,
         wheelPrizes: normWheelPrizes(s.settings.wheelPrizes && s.settings.wheelPrizes.length ? s.settings.wheelPrizes : d.wheelPrizes),
@@ -10913,6 +10948,46 @@ function AppInner() {
     return () => { if (window.BadQPlayerSyncHost === host) delete window.BadQPlayerSyncHost; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Full Owner Sync host (PLUS / PRO / FOUNDER). The sync engine reads ONLY the durable PRIMARY bg-v11 state and changes local data ONLY
+  // through the existing verified Restore pipeline (pre-restore safety snapshot + Undo), never by mutating React state directly.
+  // Without a registered host every engine call fails closed. Gameplay never waits for it.
+  useEffect(() => {
+    const host = {
+      async readDurableSnapshot() {
+        if (restoreFenceRef.current) return { ok: false, code: "durable-snapshot-unavailable" };
+        try {
+          const r = await window.storage.getPrimaryFirst("bg-v11");
+          const parsed = r && r.value ? JSON.parse(r.value) : null;
+          if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.players)) return { ok: false, code: "durable-snapshot-unavailable" };
+          const epoch = typeof parsed.restoreEpoch === "number" && Number.isSafeInteger(parsed.restoreEpoch) && parsed.restoreEpoch > 0 ? parsed.restoreEpoch : 0;
+          return { ok: true, state: parsed, restoreEpoch: epoch };
+        } catch (e) { return { ok: false, code: "durable-snapshot-unavailable" }; }
+      },
+      async applyState({ state }) {
+        if (restoreFenceRef.current) return { ok: false, code: "restore-in-progress" };
+        try {
+          const live = { ...(latestLiveStateRef.current || {}), players: playersLatestRef.current, history: historyLatestRef.current, current: currentLatestRef.current, journalReceipts: journalReceiptsLatestRef.current };
+          const payload = buildBackupPayload({ ...live, ...state });
+          const checked = await validateBackupFile(serializeForPersist(payload));
+          if (!checked.ok) return { ok: false, code: "cloud-state-invalid" };
+          const result = await applyRestore("replace", checked.backup);
+          return result && result.ok ? { ok: true } : { ok: false, code: (result && result.reason) || "local-apply-failed" };
+        } catch (e) { return { ok: false, code: "local-apply-failed" }; }
+      },
+    };
+    window.BadQOwnerSyncHost = host;
+    return () => { if (window.BadQOwnerSyncHost === host) delete window.BadQOwnerSyncHost; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Tell the (debounced, hash-diffing) Owner Sync engine that durable data may have changed. A no-op unless a PLUS/PRO/FOUNDER group is
+  // linked; the engine itself coalesces bursts (no per-keystroke traffic) and re-reads the durable snapshot, so a slightly early notify is safe.
+  useEffect(() => {
+    try { const o = window.BadQCommercialBridge && window.BadQCommercialBridge.ownerSync; if (o && typeof o.notifyChanged === "function") o.notifyChanged(); } catch (e) {}
+  }, [players, history, current, future, roundNo, courtCount, courtLabels, mode, settings, session, lockPairs, sessionHistory, generalExpenses, otherIncome, discountCredits, rewardHistory, activeTournament, tournamentHistory, groupDefaults, rankingConfigs]);
+  useEffect(() => {
+    const id = setInterval(() => { try { const o = window.BadQCommercialBridge && window.BadQCommercialBridge.ownerSync; if (o && typeof o.notifyChanged === "function") o.notifyChanged(); } catch (e) {} }, 45000);
+    return () => clearInterval(id);
+  }, []);
   const [addAttemptTick, setAddAttemptTick] = useState(0);
   // Phase 4A add-attempt settle: runs AFTER commit, observes the committed roster, releases reservations, starts photo work.
   useEffect(() => {
@@ -11365,6 +11440,7 @@ function AppInner() {
   const startGame = (mid) => {
     const m = current.find((x) => x.id === mid);
     if (!m) return;
+    if (m.status === "next" && licenseGateBlocks()) return; // a game already playing/paused is never touched by the licence gate
     // v1.14.5: a NOT-YET-PLAYING game cannot be started on a court that is closed right now (real-time mode ON). A game that is
     // already playing/paused is never touched by this rule (resume does not pass through here).
     if (m.status === "next" && !courtAssignableNow(m.court)) {
@@ -11821,6 +11897,7 @@ function AppInner() {
     // v1.12.38: this runs possibly deferred behind a pending critical write, so it reads the LATEST state, never
     // the values captured when the organizer tapped.
     const current = currentLatestRef.current, players = playersLatestRef.current, history = historyLatestRef.current; // eslint-disable-line no-shadow
+    if (licenseGateBlocks()) return;
     if (!courtAssignableNow(court)) return; // v1.14.5: real-time mode ON and this court is closed right now — never receives a new game
     if (settings.pairingMode === "manual") {
       const nc = { id: uid(), mode, source: "casual", teamA: emptyTeam(), teamB: emptyTeam(), status: "next", round: roundNo + 1, court, locked: false, seq: nextMatchSeq() };
@@ -12582,7 +12659,7 @@ function AppInner() {
   const applyGroupDefaultsFor = (name) => {
     const bundle = groupDefaults[name];
     if (!bundle) return;
-    setSettings((s) => ({ ...s, ...bundle.settings, wheelPrizes: (bundle.settings.wheelPrizes || []).map((wp) => ({ ...wp })) }));
+    setSettings((s) => ({ ...s, ...bundle.settings, shuttleBillingMode: legacyShuttleBillingMode(bundle.settings), wheelPrizes: (bundle.settings.wheelPrizes || []).map((wp) => ({ ...wp })) }));
     if (bundle.mode) setMode(bundle.mode);
     if (bundle.courtCount) setCourtCount(bundle.courtCount);
     if (Array.isArray(bundle.courtLabels)) setCourtLabelsRaw(syncCourtLabels(bundle.courtLabels, bundle.courtCount || bundle.courtLabels.length));
@@ -13642,6 +13719,17 @@ function AppInner() {
             <span style={{ fontSize: 17, flexShrink: 0, lineHeight: "20px" }}>🔄</span>
             <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 700 }}>{t("app.updateBanner", { version: updateAvailable })}{updateNote && <div style={{ fontSize: 11.5, fontWeight: 600, marginTop: 2 }}>{updateNote}</div>}</div>
             <button onClick={applyUpdateNow} style={{ flexShrink: 0, padding: "7px 13px", borderRadius: 9, background: T.blue, border: "none", color: "#fff", fontSize: 12, fontWeight: 800 }}>{t("app.updateNow")}</button>
+          </div>
+        )}
+
+        {licenseRestricted && (
+          <div data-testid="license-gate-banner" style={{ background: "#fff7e6", border: "1px solid #f0c96b", borderRadius: 12, padding: "10px 11px", marginBottom: 14 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 800 }}>{t("license.gate.title")}</div>
+            <div style={{ fontSize: 11, color: T.muted, marginTop: 2, lineHeight: 1.6 }}>{t("license.gate.banner")}</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 7 }}>
+              <button data-testid="license-gate-open" onClick={() => { setTab("settings"); setSettingsAutoOpen("online"); }} style={{ padding: "7px 13px", borderRadius: 9, background: T.green, border: "none", color: "#fff", fontSize: 12, fontWeight: 800 }}>{t("license.gate.openLicense")}</button>
+              <button onClick={() => { setTab("settings"); setSettingsAutoOpen("backup"); }} style={{ padding: "7px 13px", borderRadius: 9, background: T.surface2, border: `1px solid ${T.border}`, color: T.text, fontSize: 12, fontWeight: 700 }}>{t("license.gate.openBackup")}</button>
+            </div>
           </div>
         )}
 
@@ -15683,10 +15771,12 @@ const ONLINE_STATUS = {
   UNVERIFIED: "unverified",       // signed in, email not verified yet
   ACTIVE: "active",               // verified Owner + this device authorized (server-confirmed)
   NEEDS_DEVICE: "needs_device",   // verified Owner, this installation not registered yet (explicit Owner action)
+  REAUTH: "reauth",               // an already-confirmed device REAUTHORIZATION is waiting for the Owner's recent sign-in (NOT a new-device registration)
   DEVICE_LIMIT: "device_limit",   // 2 devices already authorized
   DEVICE_REVOKED: "device_revoked",
   DEVICE_UNAUTHORIZED: "device_unauthorized",
   MISMATCH: "mismatch",           // a different Owner than the one this device's cloud links belong to
+  NO_ENTITLEMENT: "no_entitlement", // verified Owner + authorized device, but the server grants no paid Online access (none / expired / revoked / invalid)
   ERROR: "error",
 };
 const ONLINE_STATUS_META = {
@@ -15696,19 +15786,26 @@ const ONLINE_STATUS_META = {
   [ONLINE_STATUS.UNVERIFIED]: { icon: "🟠", label: "ยังไม่ยืนยันอีเมล", color: "#b45309" },
   [ONLINE_STATUS.ACTIVE]: { icon: "🟢", label: "ออนไลน์", color: T.green },
   [ONLINE_STATUS.NEEDS_DEVICE]: { icon: "🟠", label: "ต้องลงทะเบียนอุปกรณ์", color: "#b45309" },
+  [ONLINE_STATUS.REAUTH]: { icon: "🟠", label: "ต้องยืนยันตัวตนอีกครั้ง", color: "#b45309" },
   [ONLINE_STATUS.DEVICE_LIMIT]: { icon: "🟠", label: "ครบจำนวนอุปกรณ์แล้ว", color: "#b45309" },
   [ONLINE_STATUS.DEVICE_REVOKED]: { icon: "🔒", label: "อุปกรณ์นี้ถูกยกเลิกสิทธิ์", color: T.accent },
   [ONLINE_STATUS.DEVICE_UNAUTHORIZED]: { icon: "🔒", label: "อุปกรณ์นี้ยังไม่ได้รับอนุญาต", color: T.accent },
   [ONLINE_STATUS.MISMATCH]: { icon: "🔒", label: "คนละบัญชีกับที่เชื่อมไว้", color: T.accent },
+  [ONLINE_STATUS.NO_ENTITLEMENT]: { icon: "🟠", label: "ยังไม่มีสิทธิ์ใช้งานออนไลน์", color: "#b45309" },
   [ONLINE_STATUS.ERROR]: { icon: "🔴", label: "เกิดข้อผิดพลาด", color: T.accent },
 };
+// Early Access: a SERVER-VERIFIED lack of paid Online access (never an offline / unverifiable state, which is not a denial).
+const ENTITLEMENT_DENIED_STATUSES = ["none", "expired", "revoked", "invalid"];
+function entitlementDenied(entitlement) { return !!(entitlement && entitlement.fromServer === true && ENTITLEMENT_DENIED_STATUSES.includes(entitlement.status)); }
+function entitlementGranted(entitlement) { return !!(entitlement && entitlement.fromServer === true && entitlement.status === "granted"); }
 // Pure function — the ONE place that decides which status applies (both the Settings row and the sheet use it).
-function deriveOnlineStatus({ available, user, device, isOffline }) {
+function deriveOnlineStatus({ available, user, device, isOffline, entitlement }) {
   if (!available || !user) return ONLINE_STATUS.NOT_CONNECTED;
   if (!user.emailVerified) return ONLINE_STATUS.UNVERIFIED;
   switch (device && device.status) {
-    case "authorized": return ONLINE_STATUS.ACTIVE;
-    case "needs_enrollment": case "enrolling": case "reauth_required": return ONLINE_STATUS.NEEDS_DEVICE;
+    case "authorized": return entitlementDenied(entitlement) ? ONLINE_STATUS.NO_ENTITLEMENT : ONLINE_STATUS.ACTIVE;
+    case "reauth_required": return device.reauthIntent === "reauthorize" ? ONLINE_STATUS.REAUTH : ONLINE_STATUS.NEEDS_DEVICE; // reauthorizing a registered device is never "registration needed"
+    case "needs_enrollment": case "enrolling": return ONLINE_STATUS.NEEDS_DEVICE;
     case "limit_reached": return ONLINE_STATUS.DEVICE_LIMIT;
     case "revoked": return ONLINE_STATUS.DEVICE_REVOKED;
     case "unauthorized": case "migration_required": return ONLINE_STATUS.DEVICE_UNAUTHORIZED;
@@ -15725,10 +15822,12 @@ const ONLINE_STATUS_LABEL_KEY = {
   [ONLINE_STATUS.UNVERIFIED]: "online.status.unverified",
   [ONLINE_STATUS.ACTIVE]: "online.status.online",
   [ONLINE_STATUS.NEEDS_DEVICE]: "online.status.needsDevice",
+  [ONLINE_STATUS.REAUTH]: "online.status.reauthRequired",
   [ONLINE_STATUS.DEVICE_LIMIT]: "online.status.deviceLimit",
   [ONLINE_STATUS.DEVICE_REVOKED]: "online.status.deviceRevoked",
   [ONLINE_STATUS.DEVICE_UNAUTHORIZED]: "online.status.deviceUnauthorized",
   [ONLINE_STATUS.MISMATCH]: "online.status.mismatch",
+  [ONLINE_STATUS.NO_ENTITLEMENT]: "online.status.noEntitlement",
   [ONLINE_STATUS.ERROR]: "online.status.error",
 };
 // Firebase/Auth/Cloud error codes -> localized display copy. The error code remains the sole input to this
@@ -15793,6 +15892,10 @@ function cloudErrorMessage(e, tr) {
     offline: "online.error.network",
     "verification-unavailable": "online.error.serverUnavailable",
     "session-unavailable": "online.error.unauthenticated",
+    // v1.15.4 (P3) — enrollment single-flight / session safety.
+    "session-changed": "online.error.sessionChanged",
+    "enrollment-in-progress": "online.error.enrollmentInProgress",
+    "enrollment-cancelled": "online.device.registerCancelled",
   };
   if (tr && code && MAP[code]) return tr(MAP[code]);
   return tr ? tr("online.error.generic") : ((e && e.message) || "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
@@ -15847,7 +15950,8 @@ function useCommercialOwner(commercial) {
   }, [available, commercial]);
   useEffect(() => {
     if (!available || !commercial.onDeviceStateChange) return;
-    const unsub = commercial.onDeviceStateChange((value) => setDevice(value || { status: "signed_out" }));
+    // a device-state change also follows a verification reload, so re-read the user snapshot (keeps the Settings row from showing a stale "email not verified")
+    const unsub = commercial.onDeviceStateChange((value) => { setDevice(value || { status: "signed_out" }); if (commercial.getCurrentOwner) setUser(snapshotOwner(commercial.getCurrentOwner())); });
     return () => { try { unsub && unsub(); } catch (e) {} };
   }, [available, commercial]);
   useEffect(() => {
@@ -15857,6 +15961,195 @@ function useCommercialOwner(commercial) {
   }, []);
   const refreshUser = () => { if (available && commercial.getCurrentOwner) setUser(snapshotOwner(commercial.getCurrentOwner())); };
   return { available, user, device, isOffline, refreshUser };
+}
+// Server entitlement snapshot (separate from identity + device state). Presentation only.
+function useCommercialEntitlement(commercial) {
+  const available = !!(commercial && commercial.available);
+  const read = () => (available && commercial.getEntitlementState ? commercial.getEntitlementState() : null);
+  const [entitlement, setEntitlement] = useState(read);
+  useEffect(() => {
+    if (!available || !commercial.onEntitlementChange) { setEntitlement(null); return; }
+    const unsub = commercial.onEntitlementChange((value) => setEntitlement(value || null));
+    return () => { try { unsub && unsub(); } catch (e) {} };
+  }, [available, commercial]);
+  return entitlement;
+}
+// Plan / licence status (BAD_Q, PLUS, PRO, FOUNDER_ALL_ACCESS). Presentation only: the view is derived by the bridge from the server-verified
+// entitlement; this component never grants anything, never blocks gameplay and never touches local data.
+function useCommercialLicenseView(commercial, entitlement) {
+  const available = !!(commercial && commercial.available && commercial.getLicenseView);
+  const read = () => { try { return available ? commercial.getLicenseView() : null; } catch (e) { return null; } };
+  const [view, setView] = useState(read);
+  const [syncStatus, setSyncStatus] = useState(() => { try { return commercial && commercial.ownerSync ? commercial.ownerSync.getStatus() : null; } catch (e) { return null; } });
+  useEffect(() => { setView(read()); }, [entitlement, available]);
+  useEffect(() => {
+    const id = setInterval(() => setView(read()), 60000); // expiry is judged against the (skew-corrected) clock; it can only tighten a grant
+    return () => clearInterval(id);
+  }, [available]);
+  useEffect(() => {
+    if (!commercial || !commercial.ownerSync) return undefined;
+    const unsub = commercial.ownerSync.subscribe((v) => setSyncStatus(v));
+    return () => { try { unsub && unsub(); } catch (e) {} };
+  }, [commercial]);
+  return { view, syncStatus };
+}
+const LICENSE_PLAN_KEY = { BAD_Q: "badq", PLUS: "plus", PRO: "pro", FOUNDER_ALL_ACCESS: "founder", EARLY_ACCESS_LEGACY: "legacy" };
+const licenseCamel = (v) => String(v).replace(/[-_]([a-z])/g, (m, c) => c.toUpperCase());
+function LicenseStatusCard({ view, syncStatus, t, fmtDate }) {
+  if (!view || !view.planId) return null;
+  const date = (iso) => { try { return fmtDate ? fmtDate(Date.parse(iso)) : new Date(iso).toLocaleDateString(); } catch (e) { return iso; } };
+  const live = view.state === "active" || view.state === "trial" || view.state === "grace";
+  const lines = [];
+  if (view.lifetime && view.state === "active") lines.push(t("license.lifetime"));
+  else if (view.state === "trial" && view.trialRemainingMs !== null) lines.push(t("license.trialLeft", { days: Math.max(1, Math.ceil(view.trialRemainingMs / 86400000)) }));
+  else if (view.validUntil && view.state === "expired") lines.push(t("license.endedOn", { date: date(view.validUntil) }));
+  else if (view.validUntil && live) lines.push(t("license.validUntil", { date: date(view.validUntil) }));
+  if (view.renewal && live) lines.push(view.renewal.cancelAtPeriodEnd ? t("license.renewalCancels", { date: date(view.validUntil || view.renewal.nextRenewalAt) }) : view.renewal.autoRenew && view.renewal.nextRenewalAt ? t("license.renewalAuto", { date: date(view.renewal.nextRenewalAt) }) : t("license.renewalManual"));
+  lines.push(t("license.deviceCapacity", { max: view.deviceCapacity }));
+  let syncLine = null;
+  if (view.planId === "BAD_Q") syncLine = t("license.sync.planNo");
+  else if (!view.ownerCloudSync) syncLine = t("license.sync.off");
+  else if (syncStatus) syncLine = syncStatus.reason === "transport-pending-contract" ? t("license.sync.pendingService") : t("license.sync." + licenseCamel((syncStatus.state === "idle" && !syncStatus.initialized) ? "disabled" : (syncStatus.state || "disabled")));
+  return (
+    <div data-testid="license-card" data-plan={view.planId} data-state={view.state} style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${live ? T.border : "#b45309"}`, marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <div data-testid="license-plan" style={{ fontSize: 13, fontWeight: 800, color: T.text, flex: 1 }}>{t("license.plan." + LICENSE_PLAN_KEY[view.planId])}</div>
+        <div data-testid="license-state" style={{ fontSize: 11, fontWeight: 800, color: live ? T.green : "#b45309" }}>{t("license.state." + licenseCamel(view.state))}</div>
+      </div>
+      {lines.map((l, i) => <div key={i} style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6 }}>{l}</div>)}
+      {syncLine && <div data-testid="license-sync" style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6 }}>{syncLine}</div>}
+      <div style={{ fontSize: 11, color: T.muted, lineHeight: 1.6, marginTop: 4 }}>{t("license.localNote")}</div>
+    </div>
+  );
+}
+// BAD_Q Offline licence card (contract /v2/offline). Presentation + EXPLICIT Owner actions only. Sign-in, device registration, the 72-hour
+// server trial, code redemption and the signed-licence fetch each need their own confirmation; nothing runs on login / reload / reconnect
+// (except the passive server-status check inside the bridge). Gameplay restrictions never delete or hide any local data.
+const LICENSE_ERR_KEY = { offline: "offline", "verification-unavailable": "unavailable", "device-enrollment-required": "enrollNeeded", DEVICE_LIMIT_REACHED: "deviceLimit", "device-limit-reached": "deviceLimit",
+  "offline-device-unlock-required": "unlockRequired", "device-policy-migration-required": "migrationRequired", "recent-authentication-required": "reauth", "session-changed": "sessionChanged",
+  "account-mismatch": "accountMismatch", "email-not-verified": "emailNotVerified", "offline-contract-invalid": "contractInvalid", "license-key-untrusted": "keyUntrusted",
+  "license-signature-invalid": "signatureInvalid", "license-revoked": "revoked", "license-expired": "expired", "offline-grant-required": "grantRequired", "redeem-code-invalid": "codeInvalid",
+  "enrollment-in-progress": "inProgress", "device-revoked": "deviceReleased", "device-mismatch": "contractInvalid" };
+function LocalLicenseCard({ t, user, fmtDate }) {
+  const api = typeof window !== "undefined" ? window.BadQLocalLicenseApi : null;
+  const read = () => { try { return api ? api.view() : null; } catch (e) { return null; } };
+  const [view, setView] = useState(read);
+  const [, bump] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [panel, setPanel] = useState(null); // null | enroll | trial | redeem | migrate | reauth
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [migration, setMigration] = useState(false);
+  const abortRef = useRef(null);
+  const pendingRef = useRef(null);
+  useEffect(() => {
+    if (!api) return undefined;
+    setView(read());
+    const un = api.subscribe(() => setView(read()));
+    const id = setInterval(() => setView(read()), 30000);
+    const h = () => bump((x) => x + 1);
+    window.addEventListener("badq:commercial-bridge-ready", h);
+    return () => { try { un(); } catch (e) {} clearInterval(id); window.removeEventListener("badq:commercial-bridge-ready", h); };
+  }, []);
+  if (!view || view.state === "not_configured") return null;
+  const offline = api.offline;
+  const signedIn = !!(user && user.emailVerified);
+  const st = view.state;
+  const live = st === "active" || st === "trial" || st === "checking";
+  const date = (iso) => { try { return fmtDate ? fmtDate(Date.parse(iso)) : new Date(iso).toLocaleString(); } catch (e) { return iso; } };
+  const errText = (e) => { const c = e && e.code ? e.code : "generic"; const k = LICENSE_ERR_KEY[c] || (/^license-/.test(c) ? "licenseRejected" : "generic"); return t("license.err." + k); };
+  const run = async (fn, { retryable = true } = {}) => {
+    setBusy(true); setMsg("");
+    try { await fn(); setPanel(null); setCode(""); setPassword(""); pendingRef.current = null; setMigration(false); }
+    catch (e) {
+      const c = e && e.code;
+      if (c === "recent-authentication-required" && retryable) { pendingRef.current = fn; setPanel("reauth"); }
+      else if (c === "device-policy-migration-required") { setMigration(true); setPanel(null); setMsg(errText(e)); }
+      else setMsg(errText(e));
+    }
+    setBusy(false); setView(read());
+  };
+  const label = (typeof describeThisDevice === "function") ? describeThisDevice(t) : "Web";
+  const doEnroll = (migrate) => run(() => { const ac = new AbortController(); abortRef.current = ac; return offline.enroll({ confirm: true, label, platform: "web", expectedUid: user.uid, signal: ac.signal, migrateLegacy: migrate === true, confirmLegacyMigration: migrate === true }); });
+  const noteKey = { not_activated: "notActivatedNote", checking: "checkingNote", trial: "trialNote", trial_expired: "trialExpiredNote", active: "activeNote", revoked: "revokedNote", device_released: "deviceReleasedNote", invalid: "invalidNote" }[st] || "notActivatedNote";
+  const btn = { ...btnSecondary, flex: "none", padding: "9px 12px", fontSize: 12.5 };
+  const btnP = { ...btnPrimary, flex: "none", padding: "9px 12px", fontSize: 12.5 };
+  return (
+    <div data-testid="local-license-card" data-state={st} data-restricted={view.restricted ? "1" : "0"} style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${live ? T.border : "#b45309"}`, marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: T.text, flex: 1 }}>{t("license.local.title")}</div>
+        <div data-testid="local-license-state" style={{ fontSize: 11, fontWeight: 800, color: live ? T.green : "#b45309" }}>{t("license.state." + licenseCamel(st))}</div>
+      </div>
+      <div data-testid="local-license-plan" style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6 }}>{t("license.local.planLine", { price: view.priceThb })}</div>
+      <div style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6 }}>{t("license.deviceCapacity", { max: 1 })} · {t("license.local.noCloud")}</div>
+      {st === "trial" && <div data-testid="local-license-days" style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6 }}>{t("license.local.trialEnds", { date: date(view.trialEndsAt) })}</div>}
+      {st === "trial_expired" && view.trialEndsAt && <div style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6 }}>{t("license.endedOn", { date: date(view.trialEndsAt) })}</div>}
+      {st === "active" && <div style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6 }}>{t("license.lifetime")}</div>}
+      {view.clockRollbackDetected && <div data-testid="local-license-clock" style={{ fontSize: 11.5, color: "#b45309", lineHeight: 1.6 }}>{t("license.local.clockNote")}</div>}
+      {st === "invalid" && view.errorCode && <div style={{ fontSize: 11, color: "#b45309", lineHeight: 1.6 }}>{view.errorCode}</div>}
+      <div style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6, marginTop: 2 }}>{t("license.local." + noteKey)}</div>
+      <div style={{ fontSize: 11, color: T.muted, lineHeight: 1.6, marginTop: 4 }}>{t("license.localNote")}</div>
+      {msg && <div data-testid="local-license-msg" style={{ marginTop: 6, fontSize: 12, color: "#b45309" }}>{msg}</div>}
+      {!signedIn && st !== "active" && <div data-testid="local-license-signin-hint" style={{ marginTop: 6, fontSize: 12, color: T.muted }}>{offline ? t("license.local.signInHint") : t("license.local.onlineUnavailable")}</div>}
+      {signedIn && offline && panel === null && (
+        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+          {st !== "active" && <button data-testid="local-license-enroll" disabled={busy} onClick={() => { setMsg(""); setPanel("enroll"); }} style={btn}>{t("license.local.registerDevice")}</button>}
+          {st !== "active" && <button data-testid="local-license-trial" disabled={busy} onClick={() => { setMsg(""); setPanel("trial"); }} style={btnP}>{t("license.local.startTrial")}</button>}
+          {st !== "active" && <button data-testid="local-license-redeem" disabled={busy} onClick={() => { setMsg(""); setPanel("redeem"); }} style={btnP}>{t("license.local.redeem")}</button>}
+          <button data-testid="local-license-refresh" disabled={busy} onClick={() => run(() => offline.activateLicense())} style={btn}>{t("license.local.refresh")}</button>
+          {migration && <button data-testid="local-license-migrate" disabled={busy} onClick={() => { setMsg(""); setPanel("migrate"); }} style={btnP}>{t("license.local.migrate")}</button>}
+        </div>
+      )}
+      {signedIn && offline && panel === "enroll" && (
+        <div data-testid="local-license-panel-enroll" style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, color: T.text, lineHeight: 1.6 }}>{t("license.local.enrollConfirm", { device: label })}</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            <button data-testid="local-license-enroll-confirm" disabled={busy} onClick={() => doEnroll(false)} style={btnP}>{t("license.local.confirm")}</button>
+            <button data-testid="local-license-cancel" onClick={() => { try { abortRef.current && abortRef.current.abort(); } catch (e) {} setPanel(null); }} style={btn}>{t("license.local.cancel")}</button>
+          </div>
+        </div>
+      )}
+      {signedIn && offline && panel === "migrate" && (
+        <div data-testid="local-license-panel-migrate" style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, color: T.text, lineHeight: 1.6 }}>{t("license.local.migrateConfirm")}</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            <button data-testid="local-license-migrate-confirm" disabled={busy} onClick={() => doEnroll(true)} style={btnP}>{t("license.local.confirm")}</button>
+            <button data-testid="local-license-cancel" onClick={() => setPanel(null)} style={btn}>{t("license.local.cancel")}</button>
+          </div>
+        </div>
+      )}
+      {signedIn && offline && panel === "trial" && (
+        <div data-testid="local-license-panel-trial" style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, color: T.text, lineHeight: 1.6 }}>{t("license.local.trialConfirm")}</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            <button data-testid="local-license-trial-confirm" disabled={busy} onClick={() => run(() => offline.startTrial({ confirm: true, expectedUid: user.uid }))} style={btnP}>{t("license.local.confirm")}</button>
+            <button data-testid="local-license-cancel" onClick={() => setPanel(null)} style={btn}>{t("license.local.cancel")}</button>
+          </div>
+        </div>
+      )}
+      {signedIn && offline && panel === "redeem" && (
+        <div data-testid="local-license-panel-redeem" style={{ marginTop: 8 }}>
+          <input data-testid="local-license-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder={t("license.local.codePlaceholder")} autoComplete="off" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface2, color: T.text, fontSize: 13 }} />
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            <button data-testid="local-license-redeem-confirm" disabled={busy || !code.trim()} onClick={() => run(() => offline.redeem({ code, confirm: true, expectedUid: user.uid }))} style={btnP}>{t("license.local.confirm")}</button>
+            <button data-testid="local-license-cancel" onClick={() => setPanel(null)} style={btn}>{t("license.local.cancel")}</button>
+          </div>
+        </div>
+      )}
+      {signedIn && offline && panel === "reauth" && (
+        <div data-testid="local-license-panel-reauth" style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, color: T.text, lineHeight: 1.6 }}>{t("license.err.reauth")}</div>
+          <input data-testid="local-license-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("online.auth.password")} style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface2, color: T.text, fontSize: 13 }} />
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            <button data-testid="local-license-reauth-confirm" disabled={busy || !password} onClick={async () => { setBusy(true); setMsg(""); try { await offline.reauthenticate(password); const again = pendingRef.current; setPassword(""); setBusy(false); if (again) await run(again, { retryable: false }); else setPanel(null); } catch (e) { setBusy(false); setMsg(errText(e)); } }} style={btnP}>{t("license.local.confirm")}</button>
+            <button onClick={() => { pendingRef.current = null; setPanel(null); setPassword(""); }} style={btn}>{t("license.local.cancel")}</button>
+          </div>
+        </div>
+      )}
+      {st === "invalid" && <button data-testid="local-license-recover" onClick={() => { try { api.recover(); } catch (e) {} setView(read()); }} style={{ ...btn, marginTop: 8 }}>{t("license.local.recover")}</button>}
+    </div>
+  );
 }
 // Friendly device name for the registration confirmation (no identifiers, no secrets).
 function describeThisDevice(t) {
@@ -15873,7 +16166,8 @@ function describeThisDevice(t) {
 function BadQOnlineNavRow({ onOpen, tr }) {
   const commercial = useBadQCommercialAdapter();
   const { available, user, device, isOffline } = useCommercialOwner(commercial);
-  const status = deriveOnlineStatus({ available, user, device, isOffline });
+  const entitlement = useCommercialEntitlement(commercial);
+  const status = deriveOnlineStatus({ available, user, device, isOffline, entitlement });
   const meta = ONLINE_STATUS_META[status];
   return (
     <button data-testid="online-nav-row" data-status={status} onClick={onOpen} style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8, padding: "11px 12px", borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, marginBottom: 8, cursor: "pointer" }}>
@@ -16016,7 +16310,18 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
   const [reauthPassword, setReauthPassword] = useState("");
   const [deviceErr, setDeviceErr] = useState("");
   const [revokedConfirm, setRevokedConfirm] = useState(false);
+  // v1.15.4 (P1/P2/P3): in-app confirmations (no native confirm()), explicit cancellation feedback, scoped enrollment cancellation.
+  const [groupConfirm, setGroupConfirm] = useState(null); // { kind: "create" | "unlink", localGroupId, name }
+  const [phase2Notice, setPhase2Notice] = useState("");
+  const [deviceNotice, setDeviceNotice] = useState("");
+  const [enrollSent, setEnrollSent] = useState(false);
+  const enrollAbortRef = useRef(null);
+  useEffect(() => () => { const pending = enrollAbortRef.current; if (pending) pending.abort(); }, []);
   const deviceAuthorized = !!(user && user.emailVerified && device && device.status === "authorized");
+  const entitlement = useCommercialEntitlement(commercial);
+  const { view: licenseView, syncStatus: licenseSync } = useCommercialLicenseView(commercial, entitlement);
+  // Owner Cloud capability = verified Owner + authorized device + server-verified entitlement. Local Core never depends on it.
+  const cloudReady = deviceAuthorized && entitlementGranted(entitlement);
   const phase2GroupLinking = !!(commercialAvailable && commercial.listBadmintonGroups && commercial.linkBadmintonGroup &&
     commercial.createAndLinkBadmintonGroup && commercial.validateBadmintonGroupLink && commercial.unlinkBadmintonGroup);
   const localGroupOptions = (localGroups && Array.isArray(localGroups.records) ? localGroups.records : [])
@@ -16046,7 +16351,7 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
     catch (e) { setPhase2Error(t("online.groupLink.actionError")); }
   }, [phase2GroupLinking, localGroupOptions.map((record) => `${record.localGroupId}:${record.name}`).join("|")]);
   useEffect(() => {
-    if (!phase2GroupLinking || !deviceAuthorized) return;
+    if (!phase2GroupLinking || !cloudReady) return;
     let cancelled = false;
     setPhase2Busy(true); setPhase2Error("");
     commercial.listBadmintonGroups()
@@ -16060,19 +16365,19 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
       .catch(() => { if (!cancelled) setPhase2Error(t("online.groupLink.loadError")); })
       .finally(() => { if (!cancelled) setPhase2Busy(false); });
     return () => { cancelled = true; };
-  }, [phase2GroupLinking, user && user.uid, deviceAuthorized]);
+  }, [phase2GroupLinking, user && user.uid, cloudReady]);
 
   const selectedGroupLink = (groupLinkState.records || []).find((record) =>
     record && record.localGroupId === selectedLocalGroupId) || null;
   useEffect(() => {
     if (!phase2GroupLinking || !selectedGroupLink || selectedGroupLink.linkStatus !== "linked" ||
-        selectedGroupLink.validationStatus === "validated" || !deviceAuthorized) return;
+        selectedGroupLink.validationStatus === "validated" || !cloudReady) return;
     let cancelled = false;
     commercial.validateBadmintonGroupLink(selectedGroupLink.localGroupId)
       .catch(() => { if (!cancelled) setPhase2Error(t("online.groupLink.actionError")); });
     return () => { cancelled = true; };
   }, [phase2GroupLinking, selectedGroupLink && selectedGroupLink.localGroupId,
-    selectedGroupLink && selectedGroupLink.validationStatus, user && user.uid, deviceAuthorized]);
+    selectedGroupLink && selectedGroupLink.validationStatus, user && user.uid, cloudReady]);
   const refreshPhase2Groups = async () => {
     const groups = await commercial.listBadmintonGroups();
     const safe = Array.isArray(groups) ? groups : [];
@@ -16081,33 +16386,56 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
       ? current : (safe[0]?.groupId || ""));
     return safe;
   };
+  useEffect(() => { if (!(phase2GroupLinking && cloudReady)) setGroupConfirm(null); }, [phase2GroupLinking, cloudReady]);
   const doPhase2Link = async () => {
     if (!selectedLocalGroup || !selectedCloudGroupId) return;
-    setPhase2Busy(true); setPhase2Error("");
+    setPhase2Busy(true); setPhase2Error(""); setPhase2Notice("");
     try { await commercial.linkBadmintonGroup({ localGroupId: selectedLocalGroup.localGroupId, localGroupName: selectedLocalGroup.name, cloudGroupId: selectedCloudGroupId }); }
     catch (e) { setPhase2Error(t("online.groupLink.actionError")); }
     finally { setPhase2Busy(false); }
   };
-  const doPhase2Create = async () => {
-    if (!selectedLocalGroup || !window.confirm(t("online.groupLink.createConfirm", { name: selectedLocalGroup.name }))) return;
-    setPhase2Busy(true); setPhase2Error("");
-    try {
-      await commercial.createAndLinkBadmintonGroup({ localGroupId: selectedLocalGroup.localGroupId, localGroupName: selectedLocalGroup.name, displayName: selectedLocalGroup.name });
-      await refreshPhase2Groups();
-    } catch (e) { setPhase2Error(t("online.groupLink.actionError")); }
-    finally { setPhase2Busy(false); }
+  // P1: Create/Unlink open an in-app confirmation (never window.confirm, which some browsers/WebViews suppress silently).
+  // Nothing is sent until the explicit Confirm tap; dismissing it always says so.
+  const doPhase2Create = () => {
+    if (!selectedLocalGroup || phase2Busy) return;
+    setPhase2Error(""); setPhase2Notice("");
+    setGroupConfirm({ kind: "create", localGroupId: selectedLocalGroup.localGroupId, name: selectedLocalGroup.name });
+  };
+  const doPhase2Unlink = () => {
+    if (!selectedGroupLink || phase2Busy) return;
+    setPhase2Error(""); setPhase2Notice("");
+    setGroupConfirm({ kind: "unlink", localGroupId: selectedGroupLink.localGroupId, name: selectedGroupLink.cloudGroupDisplayName || "" });
+  };
+  const cancelGroupConfirm = () => {
+    const pending = groupConfirm; setGroupConfirm(null);
+    if (pending) setPhase2Notice(t(pending.kind === "create" ? "online.groupConfirm.createCancelled" : "online.groupConfirm.unlinkCancelled"));
+  };
+  const runGroupConfirm = async () => {
+    const pending = groupConfirm;
+    if (!pending || phase2Busy) return;
+    setGroupConfirm(null); setPhase2Error(""); setPhase2Notice("");
+    if (pending.kind === "create") {
+      const group = localGroupOptions.find((record) => record.localGroupId === pending.localGroupId);
+      if (!group) return;
+      setPhase2Busy(true);
+      try {
+        await commercial.createAndLinkBadmintonGroup({ localGroupId: group.localGroupId, localGroupName: group.name, displayName: group.name });
+        await refreshPhase2Groups();
+      } catch (e) { setPhase2Error(t("online.groupLink.actionError")); }
+      finally { setPhase2Busy(false); }
+    } else {
+      const link = (groupLinkState.records || []).find((record) => record && record.localGroupId === pending.localGroupId && record.linkStatus === "linked");
+      if (!link) return;
+      setPhase2Busy(true);
+      try { await commercial.unlinkBadmintonGroup(link.localGroupId, { explicit: true }); }
+      catch (e) { setPhase2Error(t("online.groupLink.actionError")); }
+      finally { setPhase2Busy(false); }
+    }
   };
   const doPhase2Validate = async () => {
     if (!selectedGroupLink) return;
-    setPhase2Busy(true); setPhase2Error("");
+    setPhase2Busy(true); setPhase2Error(""); setPhase2Notice("");
     try { await commercial.validateBadmintonGroupLink(selectedGroupLink.localGroupId); }
-    catch (e) { setPhase2Error(t("online.groupLink.actionError")); }
-    finally { setPhase2Busy(false); }
-  };
-  const doPhase2Unlink = async () => {
-    if (!selectedGroupLink || !window.confirm(t("online.groupLink.unlinkConfirm"))) return;
-    setPhase2Busy(true); setPhase2Error("");
-    try { await commercial.unlinkBadmintonGroup(selectedGroupLink.localGroupId, { explicit: true }); }
     catch (e) { setPhase2Error(t("online.groupLink.actionError")); }
     finally { setPhase2Busy(false); }
   };
@@ -16167,20 +16495,54 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
     catch (e) { setErr(cloudErrorMessage(e, t)); }
     finally { setBusy(false); }
   };
-  const openRegister = () => { setDeviceErr(""); setReauthPassword(""); setDeviceLabel(describeThisDevice(t)); setRegisterOpen(true); };
+  const openRegister = () => { setDeviceErr(""); setDeviceNotice(""); setReauthPassword(""); setDeviceLabel(describeThisDevice(t)); setRegisterOpen(true); };
+  // P3: ONE registration attempt at a time (UI guard + per-Owner single-flight in the device manager). The attempt is pinned to the
+  // Owner who confirmed it and can be cancelled (Cancel / dismissing the sheet) until the request has actually been sent.
   const doEnroll = async () => {
-    setBusy(true); setDeviceErr("");
+    if (enrollAbortRef.current) return;
+    const controller = new AbortController();
+    enrollAbortRef.current = controller; setEnrollSent(false);
+    setBusy(true); setDeviceErr(""); setDeviceNotice("");
     try {
       if (needsRecentAuth) await commercial.reauthenticateOwner(reauthPassword);
       setReauthPassword("");
-      await commercial.enrollThisDevice({ confirm: true, label: deviceLabel.trim() || describeThisDevice(t) });
+      if (controller.signal.aborted) throw Object.assign(new Error("enrollment-cancelled"), { code: "enrollment-cancelled" });
+      await commercial.enrollThisDevice({
+        confirm: true, label: deviceLabel.trim() || describeThisDevice(t),
+        expectedUid: user && user.uid, signal: controller.signal, onSend: () => setEnrollSent(true),
+      });
       setRegisterOpen(false);
     } catch (e) {
       // States with their own card (limit / migration / revoked / unauthorized) close the dialog; recoverable ones (recent sign-in, network) keep it open.
-      if (e && ["DEVICE_LIMIT_REACHED", "device-policy-migration-required", "device-revoked", "device-credential-invalid"].includes(e.code)) setRegisterOpen(false);
+      if (e && e.code === "enrollment-cancelled") { setRegisterOpen(false); setDeviceNotice(t("online.device.registerCancelled")); }
+      else if (e && ["DEVICE_LIMIT_REACHED", "device-policy-migration-required", "device-revoked", "device-credential-invalid"].includes(e.code)) setRegisterOpen(false);
       else setDeviceErr(deviceError(e));
     }
-    finally { setBusy(false); }
+    finally { if (enrollAbortRef.current === controller) enrollAbortRef.current = null; setEnrollSent(false); setBusy(false); }
+  };
+  const cancelRegister = () => {
+    if (enrollSent) return; // the request already left this device: it cannot be recalled
+    const pending = enrollAbortRef.current;
+    if (pending) { pending.abort(); return; } // doEnroll finishes the cancellation at its next checkpoint
+    setRegisterOpen(false); setDeviceNotice(t("online.device.registerCancelled"));
+  };
+  // Reauthorization recovery (device already registered; a recent sign-in is needed): continues the reauthorization the Owner already
+  // confirmed - same device, no enrollment. Cancel forgets it; nothing is sent.
+  const isReauthRecovery = !!(device && device.status === "reauth_required" && device.reauthIntent === "reauthorize" && device.reauthCurrent !== false); // only for THIS device; reauthorizing another device is driven from the Device Manager
+  // A leftover "confirm reauthorize" sub-view must not survive a state change away from the revoked / recovery cards (sign-out, Owner switch...).
+  useEffect(() => { const st = device && device.status; if (st !== "revoked" && st !== "reauth_required") setRevokedConfirm(false); }, [device && device.status]);
+  const resumeInFlightRef = useRef(false);
+  // Dismissing the sheet while the continuation is still waiting for the sign-in cancels it (nothing is sent after the Owner left).
+  useEffect(() => () => { if (resumeInFlightRef.current) { try { commercial.cancelDeviceReauthorization(); } catch { /* presentation only */ } } }, []);
+  const doContinueReauthorization = async () => {
+    setBusy(true); setDeviceErr(""); setDeviceNotice(""); resumeInFlightRef.current = true;
+    try { await commercial.resumeDeviceReauthorization(reauthPassword); setReauthPassword(""); setRevokedConfirm(false); }
+    catch (e) { setDeviceErr(deviceError(e)); }
+    finally { resumeInFlightRef.current = false; setBusy(false); }
+  };
+  const cancelReauthorization = () => {
+    try { commercial.cancelDeviceReauthorization(); } catch { /* presentation only */ }
+    setReauthPassword(""); setDeviceErr(""); setRevokedConfirm(false); setDeviceNotice(t("online.device.reauthCancelled"));
   };
   const doReauthorizeThisDevice = async () => {
     setBusy(true); setDeviceErr("");
@@ -16195,7 +16557,7 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
     finally { setBusy(false); }
   };
 
-  const status = deriveOnlineStatus({ available: commercialAvailable, user, device, isOffline });
+  const status = deriveOnlineStatus({ available: commercialAvailable, user, device, isOffline, entitlement });
   const meta = ONLINE_STATUS_META[status];
   const max = (device && device.maxAuthorizedDevices) || 2;
   const dStatus = device ? device.status : "signed_out";
@@ -16208,6 +16570,8 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
         <span style={{ fontSize: 13 }}>{meta.icon}</span>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: meta.color }}>{t(ONLINE_STATUS_LABEL_KEY[status])}</span>
       </div>
+
+      <LocalLicenseCard t={t} user={user} fmtDate={typeof fmtDateTime === "function" ? fmtDateTime : null} />
 
       {/* SIGNED OUT */}
       {!user && (
@@ -16255,6 +16619,8 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
             <div style={{ fontSize: 10.5, color: T.muted, marginTop: 2 }}>{t("online.auth.verified")}</div>
           </div>
 
+          {deviceNotice && dStatus !== "authorized" && <div data-testid="device-notice" style={{ marginBottom: 8, fontSize: 12, color: T.muted }}>{deviceNotice}</div>}
+          {deviceAuthorized && <LicenseStatusCard view={licenseView} syncStatus={licenseSync} t={t} fmtDate={typeof fmtDateTime === "function" ? fmtDateTime : null} />}
           {/* DEVICE AUTHORIZATION — exactly one state card */}
           {dStatus === "authorized" && (
             <div data-testid="device-state-authorized" style={card("#e2f5ec", T.green)}>
@@ -16262,7 +16628,19 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
               <button data-testid="device-manage" onClick={() => setManageOpen(true)} style={{ ...btnSecondary, marginTop: 8, width: "100%" }}>{t("online.device.manage")}</button>
             </div>
           )}
-          {(dStatus === "needs_enrollment" || dStatus === "enrolling" || dStatus === "reauth_required") && (
+          {isReauthRecovery && (
+            <div data-testid="device-state-reauth-recovery" style={card(T.surface, T.border)}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text, marginBottom: 4 }}>{t("online.device.reauthTitle")}</div>
+              <div style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6, marginBottom: 8 }}>{t("online.device.reauthRecoveryBody")}</div>
+              <input type="password" data-testid="device-reauth-password" autoComplete="current-password" placeholder={t("online.auth.password")} value={reauthPassword} onChange={(e) => setReauthPassword(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface2, color: T.text, fontSize: 13, marginBottom: 8 }} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button data-testid="device-reauth-cancel" disabled={busy} onClick={cancelReauthorization} style={{ ...btnSecondary, flex: 1 }}>{t("common.cancel")}</button>
+                <button data-testid="device-reauth-continue" disabled={busy || !reauthPassword} onClick={doContinueReauthorization} style={{ ...btnPrimary, flex: 1 }}>{t("online.device.reauthContinue")}</button>
+              </div>
+              {deviceErr && <div data-testid="device-error" style={{ marginTop: 8, fontSize: 11.5, color: T.accent, whiteSpace: "pre-line" }}>{deviceErr}</div>}
+            </div>
+          )}
+          {(dStatus === "needs_enrollment" || dStatus === "enrolling" || (dStatus === "reauth_required" && device.reauthIntent !== "reauthorize")) && (
             <div data-testid="device-state-needs-enrollment" style={card(T.surface, T.border)}>
               <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text, marginBottom: 4 }}>{t("online.device.registerTitle")}</div>
               <div style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6, marginBottom: 8 }}>{t("online.device.registerBody", { max })}</div>
@@ -16300,7 +16678,7 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
                   </div>
                 </div>
               )}
-              {deviceErr && <div data-testid="device-error" style={{ marginTop: 8, fontSize: 11.5, color: T.accent }}>{deviceErr}</div>}
+              {deviceErr && <div data-testid="device-error" style={{ marginTop: 8, fontSize: 11.5, color: T.accent, whiteSpace: "pre-line" }}>{deviceErr}</div>}
             </div>
           )}
           {dStatus === "unauthorized" && (
@@ -16335,7 +16713,15 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
             </div>
           )}
 
-          {phase2GroupLinking && deviceAuthorized && (
+          {deviceAuthorized && entitlement && !entitlementGranted(entitlement) && (
+            <div data-testid="entitlement-state" data-status={entitlement.status} style={card(entitlement.status === "unverified" ? T.surface : "#fff7ed", entitlement.status === "unverified" ? T.border : "#b45309")}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: T.text, marginBottom: 4 }}>{t("online.entitlement.title")}</div>
+              <div style={{ fontSize: 11.5, color: T.muted, lineHeight: 1.6, marginBottom: 6 }}>{entitlement.status === "none" ? t("online.entitlement.none") : entitlement.status === "expired" ? t("online.entitlement.expired") : entitlement.status === "revoked" ? t("online.entitlement.revoked") : entitlement.status === "invalid" ? t("online.entitlement.invalid") : t("online.entitlement.unverified")}</div>
+              <div style={{ fontSize: 11, color: T.muted, lineHeight: 1.6, marginBottom: 8 }}>{t("online.entitlement.localNote")}</div>
+              <button data-testid="entitlement-recheck" disabled={busy} onClick={async () => { setBusy(true); try { await commercial.validateIdentityLink(); } catch (e) { /* the entitlement + device cards show the outcome */ } finally { setBusy(false); } }} style={{ ...btnSecondary, width: "100%" }}>{t("online.entitlement.recheck")}</button>
+            </div>
+          )}
+          {phase2GroupLinking && cloudReady && (
             <div data-testid="badminton-group-linking" style={{ padding: 12, borderRadius: 11, background: T.surface, border: `1px solid ${T.border}`, marginBottom: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 10 }}>{t("online.groupLink.title")}</div>
               {localGroupNames.length === 0 ? (
@@ -16372,6 +16758,7 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
                     </div>
                   )}
                   {phase2Error && <div style={{ marginTop: 8, fontSize: 11.5, color: T.accent }}>{phase2Error}</div>}
+                  {phase2Notice && !phase2Error && <div data-testid="group-link-notice" style={{ marginTop: 8, fontSize: 11.5, color: T.muted }}>{phase2Notice}</div>}
                 </>
               )}
             </div>
@@ -16386,11 +16773,23 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
 
       <button data-testid="online-close" onClick={onClose} style={{ ...btnSecondary, width: "100%", marginTop: 14 }}>{t("common.close")}</button>
 
+      {groupConfirm && phase2GroupLinking && cloudReady && (
+        <Overlay onClose={cancelGroupConfirm}>
+          <div data-testid="group-confirm-dialog" data-kind={groupConfirm.kind}>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 8 }}>{t(groupConfirm.kind === "create" ? "online.groupConfirm.createTitle" : "online.groupConfirm.unlinkTitle")}</div>
+            <div style={{ fontSize: 12, color: T.text, lineHeight: 1.7, marginBottom: 12 }}>{groupConfirm.kind === "create" ? t("online.groupLink.createConfirm", { name: groupConfirm.name }) : t("online.groupLink.unlinkConfirm")}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button data-testid="group-confirm-cancel" onClick={cancelGroupConfirm} style={{ ...btnSecondary, flex: 1 }}>{t("common.cancel")}</button>
+              <button data-testid="group-confirm-ok" disabled={phase2Busy} onClick={runGroupConfirm} style={{ ...btnPrimary, flex: 1 }}>{t("common.confirm")}</button>
+            </div>
+          </div>
+        </Overlay>
+      )}
       {registerOpen && user && user.emailVerified && (
-        <Overlay onClose={() => { if (!busy) setRegisterOpen(false); }}>
+        <Overlay onClose={cancelRegister}>
           <div data-testid="device-register-dialog">
-            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 8 }}>{t("online.device.registerTitle")}</div>
-            <div style={{ fontSize: 12, color: T.text, lineHeight: 1.7, marginBottom: 10 }}>{t("online.device.registerBody", { max })}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 8 }}>{t("online.device.registerConfirmTitle")}</div>
+            <div style={{ fontSize: 12, color: T.text, lineHeight: 1.7, marginBottom: 10 }}>{t("online.device.registerDialogBody", { max })}</div>
             <Label>{t("online.device.nameLabel")}</Label>
             <input type="text" data-testid="device-name-input" maxLength={80} value={deviceLabel} onChange={(e) => setDeviceLabel(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13, marginBottom: 10 }} />
             {needsRecentAuth && (
@@ -16399,10 +16798,10 @@ function BadQOnlineSheet({ groupDefaults, sessionHistory, localGroups, currentLo
                 <input type="password" data-testid="device-reauth-password" placeholder={t("online.auth.password")} value={reauthPassword} onChange={(e) => setReauthPassword(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13 }} />
               </div>
             )}
-            {deviceErr && <div data-testid="device-error" style={{ marginBottom: 10, fontSize: 12, color: T.accent }}>{deviceErr}</div>}
+            {deviceErr && <div data-testid="device-error" style={{ marginBottom: 10, fontSize: 12, color: T.accent, whiteSpace: "pre-line" }}>{deviceErr}</div>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button disabled={busy} onClick={() => setRegisterOpen(false)} style={btnSecondary}>{t("common.cancel")}</button>
-              <button data-testid="device-register-confirm" disabled={busy || !deviceLabel.trim() || (needsRecentAuth && !reauthPassword)} onClick={doEnroll} style={{ ...btnPrimary, opacity: busy ? 0.6 : 1 }}>{busy ? t("online.device.registering") : t("online.device.registerAction")}</button>
+              <button data-testid="device-register-cancel" disabled={enrollSent} onClick={cancelRegister} style={btnSecondary}>{t("common.cancel")}</button>
+              <button data-testid="device-register-confirm" disabled={busy || !deviceLabel.trim() || (needsRecentAuth && !reauthPassword)} onClick={doEnroll} style={{ ...btnPrimary, opacity: busy ? 0.6 : 1 }}>{busy ? t("online.device.registering") : t("online.device.registerConfirmAction")}</button>
             </div>
           </div>
         </Overlay>
@@ -16438,8 +16837,11 @@ function DeviceManagementSheet({ commercial, device, t, fmtDateTime, onClose }) 
     try {
       if (pending.kind === "revoke") setRows(await commercial.revokeOwnerDevice(pending.ref, { explicit: true }));
       else {
-        if (needsRecentAuth) { await commercial.reauthenticateOwner(password); setPassword(""); }
-        setRows(await commercial.reauthorizeOwnerDevice(pending.ref, { confirm: true }));
+        if (needsRecentAuth && device.reauthIntent === "reauthorize" && commercial.resumeDeviceReauthorization) { setRows(await commercial.resumeDeviceReauthorization(password)); setPassword(""); } // continues the SAME confirmed reauthorization (no state flicker, no enrollment)
+        else {
+          if (needsRecentAuth) { await commercial.reauthenticateOwner(password); setPassword(""); }
+          setRows(await commercial.reauthorizeOwnerDevice(pending.ref, { confirm: true }));
+        }
       }
       setPending(null);
     } catch (e) { setErr(cloudErrorMessage(e, t)); }
@@ -16486,7 +16888,7 @@ function DeviceManagementSheet({ commercial, device, t, fmtDateTime, onClose }) 
               <input type="password" data-testid="device-reauth-password" placeholder={t("online.auth.password")} value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 9, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13, marginBottom: 8 }} />
             )}
             <div style={{ display: "flex", gap: 8 }}>
-              <button disabled={busy} onClick={() => { setPending(null); setErr(""); }} style={{ ...btnSecondary, flex: 1 }}>{t("common.cancel")}</button>
+              <button disabled={busy} onClick={() => { if (device && device.reauthIntent === "reauthorize" && commercial.cancelDeviceReauthorization) { try { commercial.cancelDeviceReauthorization(); } catch { /* presentation only */ } } setPending(null); setErr(""); setPassword(""); }} style={{ ...btnSecondary, flex: 1 }}>{t("common.cancel")}</button>
               <button data-testid="device-action-confirm-button" disabled={busy || (pending.kind === "reauthorize" && needsRecentAuth && !password)} onClick={act} style={{ ...btnPrimary, flex: 1 }}>{t("common.confirm")}</button>
             </div>
           </div>
@@ -19695,6 +20097,11 @@ function FinanceSettingsBody({ settings, setSettings, qrRef, courtCount, setCour
               <NumField label={t ? t("finance.doublesGameLabel") : "เกมคู่"} value={settings.shuttleDoubles ?? settings.shuttle ?? 0} onChange={(v) => setSettings((s) => ({ ...s, shuttleDoubles: v }))} />
               <NumField label={t ? t("finance.singlesGameLabel") : "เกมเดี่ยว"} value={settings.shuttleSingles ?? settings.shuttle ?? 0} onChange={(v) => setSettings((s) => ({ ...s, shuttleSingles: v }))} />
             </div>
+            <Label>{t ? t("finance.shuttleBillingModeLabel") : "วิธีคิดค่าลูกแบด"}</Label>
+            <div data-testid="shuttle-billing-mode" data-mode={settings.shuttleBillingMode === "perShuttle" ? "perShuttle" : "perGame"} style={{ marginBottom: 6 }}>
+              <Seg options={[["perShuttle", t ? t("finance.shuttleBillingPerShuttle") : "คิดตามลูกที่ใช้จริง"], ["perGame", t ? t("finance.shuttleBillingPerGame") : "คิดตามเกมที่ตี"]]} value={settings.shuttleBillingMode === "perShuttle" ? "perShuttle" : "perGame"} onChange={(v) => setSettings((s) => ({ ...s, shuttleBillingMode: v === "perShuttle" ? "perShuttle" : "perGame" }))} />
+            </div>
+            <div style={{ fontSize: 11, color: T.muted, lineHeight: 1.6, marginBottom: 10 }}>{settings.shuttleBillingMode === "perShuttle" ? (t ? t("finance.shuttleBillingPerShuttleNote") : "") : (t ? t("finance.shuttleBillingPerGameNote") : "")}</div>
           </>)}
 
           {model === "perPerson" && (
@@ -22755,8 +23162,8 @@ function QuanPaymentPanel({ players, history, current, settings, setSettings, to
                   <span>{t("finance.shuttleCost")}</span><span>{formatCurrency(detailBill.eShuttle)}</span>
                 </div>
                 <div style={{ fontSize: 11, color: T.muted, paddingLeft: 8, lineHeight: 1.6 }}>
-                  <div>{t("finance.doublesBreakdownLine", { games: detailBill.doublesGames, rate: detailBill.doublesRate, total: formatCurrency(detailBill.doublesGames * detailBill.doublesRate) })}</div>
-                  <div>{t("finance.singlesBreakdownLine", { games: detailBill.singlesGames, rate: detailBill.singlesRate, total: formatCurrency(detailBill.singlesGames * detailBill.singlesRate) })}</div>
+                  <div>{t(detailBill.perShuttle ? "finance.doublesBreakdownLineShuttle" : "finance.doublesBreakdownLine", { games: detailBill.doublesUnits, rate: detailBill.doublesRate, total: formatCurrency(detailBill.doublesUnits * detailBill.doublesRate) })}</div>
+                  <div>{t(detailBill.perShuttle ? "finance.singlesBreakdownLineShuttle" : "finance.singlesBreakdownLine", { games: detailBill.singlesUnits, rate: detailBill.singlesRate, total: formatCurrency(detailBill.singlesUnits * detailBill.singlesRate) })}</div>
                 </div>
               </div>
             ) : (
@@ -24585,7 +24992,7 @@ function BackupSettingsEditor({ exportBackup, validateBackupFile, applyRestore, 
           panel never itself perturbs anything. Meant to be removed once the investigation concludes. */}
       <div style={{ marginTop: 16 }}>
         <button onClick={() => { const next = !showDiagLog; setShowDiagLog(next); if (next) loadDiagLog(); }} style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: T.muted }}>{t ? t("backup.diagLogTitle") : "Diagnostic Log (v1.11.47, ชั่วคราว)"}</span>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: T.muted }}>{t ? t("backup.diagLogTitle") : "Diagnostic Log (ชั่วคราว)"}</span>
           <ChevronDown size={13} color={T.muted} style={{ transform: showDiagLog ? "rotate(180deg)" : "none" }} />
         </button>
         {showDiagLog && (

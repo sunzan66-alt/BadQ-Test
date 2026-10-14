@@ -1,4 +1,4 @@
-// BadQ service worker — enables offline use AND a user-controlled update (v1.15.0).
+// BadQ service worker — enables offline use AND a user-controlled update (v1.15.6).
 // Bump CACHE_NAME (kept in lockstep with APP_VERSION) on every deploy.
 //
 // v1.14.9 CONTROLLED-UPDATE ARCHITECTURE. A newly deployed version must never silently become the running app: the Owner may be
@@ -13,7 +13,7 @@
 //     (e.g. after a full PWA close), that worker still serves the previously ACCEPTED shell and keeps its cache until approval.
 // There is exactly one skipWaiting() call, reachable only from that explicit message. The update probe (cache: "no-store") goes to
 // the network and is never stored.
-const CACHE_NAME = "badq-cache-v1.15.0";
+const CACHE_NAME = "badq-cache-v1.15.6";
 // Only caches that follow BadQ's OWN versioned naming convention are ever eligible for obsolete-cache cleanup;
 // caches of other apps on the same origin (e.g. other GitHub Pages projects) are never listed for deletion.
 const BADQ_CACHE_RE = /^badq-cache-v[0-9][0-9.]*$/;
